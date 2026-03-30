@@ -1,0 +1,956 @@
+/**
+ * Chat System CSS - Enterprise Galaxy
+ * Styles for chat rooms, messages, and input components
+ *
+ * @package Need2Talk
+ * @author Claude Code (AI-Orchestrated Development)
+ * @since 2025-12-02
+ */
+
+/* ==========================================================================
+   MOBILE SAFE AREA (iOS notch, home indicator, Android gesture bar)
+   ENTERPRISE v10.2: Ensures input bar is never cut off on mobile
+   ========================================================================== */
+
+.pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Mobile-specific fixes for chat layout */
+@supports (height: 100dvh) {
+    /* Browser supports dynamic viewport height - no extra fixes needed */
+}
+
+@supports not (height: 100dvh) {
+    /* Fallback for browsers without dvh support */
+    .h-\[calc\(100dvh-5rem\)\] {
+        height: calc(100vh - 5rem);
+        height: calc(var(--vh, 1vh) * 100 - 5rem); /* JS-calculated fallback */
+    }
+}
+
+/* ==========================================================================
+   SKELETON LOADING
+   ========================================================================== */
+
+.skeleton {
+    background: linear-gradient(90deg, #374151 25%, #4B5563 50%, #374151 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ==========================================================================
+   MESSAGE INPUT COMPONENT
+   ========================================================================== */
+
+.n2t-message-input {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative; /* ENTERPRISE FIX: Required for emoji picker absolute positioning */
+}
+
+.n2t-message-input.focused .n2t-input-main {
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+}
+
+.n2t-message-input.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Main Input Area */
+.n2t-input-main {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    background: rgba(55, 65, 81, 0.5);
+    border: 1px solid rgba(75, 85, 99, 0.5);
+    border-radius: 12px;
+    padding: 8px 12px;
+    transition: all 0.2s ease;
+}
+
+.n2t-input-actions-left,
+.n2t-input-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.n2t-input-text-wrapper {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+}
+
+.n2t-input-textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.5;
+    resize: none;
+    max-height: 150px;
+    overflow-y: auto;
+    text-align: left;
+    padding: 0;
+    margin: 0;
+}
+
+.n2t-input-textarea::placeholder {
+    color: rgba(156, 163, 175, 0.7);
+    text-align: left;
+}
+
+/* Action Buttons */
+.n2t-input-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: rgba(156, 163, 175, 0.8);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.n2t-input-btn:hover:not(:disabled) {
+    background: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+}
+
+.n2t-input-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.n2t-btn-send {
+    background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+    color: white;
+}
+
+.n2t-btn-send:hover:not(:disabled) {
+    background: linear-gradient(135deg, #7c3aed 0%, #9333ea 100%);
+    color: white;
+    transform: scale(1.05);
+}
+
+.n2t-btn-send:disabled {
+    background: rgba(75, 85, 99, 0.5);
+    color: rgba(156, 163, 175, 0.5);
+}
+
+/* Character Count */
+.n2t-input-char-count {
+    position: absolute;
+    bottom: -20px;
+    right: 0;
+    font-size: 11px;
+    color: rgba(156, 163, 175, 0.6);
+}
+
+.n2t-input-char-count.limit-reached {
+    color: #ef4444;
+}
+
+/* ==========================================================================
+   ATTACHMENT PREVIEW
+   ========================================================================== */
+
+.n2t-input-attachment-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(55, 65, 81, 0.5);
+    border: 1px solid rgba(75, 85, 99, 0.5);
+    border-radius: 12px;
+}
+
+.n2t-attachment-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.n2t-attachment-image-preview {
+    max-width: 100%;
+    max-height: 120px;
+    border-radius: 8px;
+    object-fit: contain;
+}
+
+.n2t-attachment-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.n2t-attachment-remove:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+
+/* ==========================================================================
+   VOICE RECORDING
+   ========================================================================== */
+
+.n2t-input-recording {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 12px;
+}
+
+.n2t-recording-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+.n2t-recording-dot {
+    width: 10px;
+    height: 10px;
+    background: #ef4444;
+    border-radius: 50%;
+    animation: recording-pulse 1s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.9); }
+}
+
+.n2t-recording-time {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ef4444;
+    font-variant-numeric: tabular-nums;
+}
+
+.n2t-recording-cancel,
+.n2t-recording-send {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.n2t-recording-cancel {
+    background: rgba(75, 85, 99, 0.5);
+    color: #9ca3af;
+}
+
+.n2t-recording-cancel:hover {
+    background: rgba(75, 85, 99, 0.7);
+}
+
+.n2t-recording-send {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.n2t-recording-send:hover {
+    transform: scale(1.05);
+}
+
+/* ==========================================================================
+   UPLOAD PROGRESS
+   ========================================================================== */
+
+.n2t-input-upload-progress {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(55, 65, 81, 0.5);
+    border-radius: 8px;
+}
+
+.n2t-upload-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(75, 85, 99, 0.5);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.n2t-upload-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8b5cf6 0%, #a855f7 100%);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.n2t-upload-text {
+    font-size: 12px;
+    color: rgba(156, 163, 175, 0.8);
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   EMOJI PICKER
+   ========================================================================== */
+
+.n2t-emoji-picker {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 8px;
+    background: rgba(31, 41, 55, 0.95);
+    border: 1px solid rgba(75, 85, 99, 0.5);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+}
+
+.n2t-emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+}
+
+.n2t-emoji-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.n2t-emoji-btn:hover {
+    background: rgba(139, 92, 246, 0.2);
+    transform: scale(1.15);
+}
+
+/* ==========================================================================
+   MESSAGE LIST
+   ========================================================================== */
+
+.n2t-message-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.n2t-message {
+    display: flex;
+    gap: 12px;
+    max-width: 85%;
+}
+
+.n2t-message.own {
+    flex-direction: row-reverse;
+    margin-left: auto;
+}
+
+.n2t-message-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+/* Avatar letter fallback */
+.n2t-avatar-letter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.n2t-message-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.n2t-message-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.n2t-message.own .n2t-message-header {
+    flex-direction: row-reverse;
+}
+
+.n2t-message-username {
+    font-weight: 600;
+    color: #a78bfa;
+}
+
+.n2t-message-time {
+    color: rgba(156, 163, 175, 0.6);
+}
+
+.n2t-message-bubble {
+    padding: 10px 14px;
+    background: rgba(55, 65, 81, 0.7);
+    border-radius: 16px;
+    border-top-left-radius: 4px;
+    color: #e5e7eb;
+    font-size: 14px;
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+.n2t-message.own .n2t-message-bubble {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(168, 85, 247, 0.4) 100%);
+    border-top-left-radius: 16px;
+    border-top-right-radius: 4px;
+}
+
+.n2t-message-status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: rgba(156, 163, 175, 0.5);
+}
+
+.n2t-message.own .n2t-message-status {
+    justify-content: flex-end;
+}
+
+/* System Messages */
+.n2t-message.system {
+    max-width: 100%;
+    justify-content: center;
+}
+
+.n2t-message.system .n2t-message-bubble {
+    background: transparent;
+    color: rgba(156, 163, 175, 0.6);
+    font-size: 12px;
+    text-align: center;
+    padding: 8px 16px;
+}
+
+/* ENTERPRISE V11.9: New Device Warning (encryption key regenerated) */
+.n2t-message.system.n2t-new-device-warning {
+    margin: 16px 0;
+}
+
+.n2t-message.system.n2t-new-device-warning .n2t-message-bubble {
+    background: rgba(251, 191, 36, 0.15);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: 12px;
+    color: #fbbf24;
+    font-size: 13px;
+    padding: 12px 20px;
+    max-width: 90%;
+}
+
+/* ==========================================================================
+   MODERATOR MESSAGES (Enterprise Galaxy)
+   ========================================================================== */
+
+/* Moderator message container */
+.n2t-moderator-message {
+    position: relative;
+}
+
+/* Moderator avatar with shield icon */
+.n2t-moderator-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(217, 70, 239, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%);
+    border: 2px solid rgba(217, 70, 239, 0.5);
+    flex-shrink: 0;
+}
+
+.n2t-moderator-avatar svg {
+    width: 22px;
+    height: 22px;
+}
+
+/* Moderator name styling */
+.n2t-moderator-name {
+    color: #d946ef !important;
+    font-weight: 700;
+}
+
+/* MOD badge */
+.n2t-mod-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: rgba(217, 70, 239, 0.2);
+    border: 1px solid rgba(217, 70, 239, 0.4);
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #d946ef;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 4px;
+}
+
+/* Moderator bubble with special border */
+.n2t-moderator-bubble {
+    background: rgba(217, 70, 239, 0.1) !important;
+    border: 1px solid rgba(217, 70, 239, 0.3);
+}
+
+/* Glow effect on hover for moderator messages */
+.n2t-moderator-message:hover .n2t-moderator-bubble {
+    box-shadow: 0 0 12px rgba(217, 70, 239, 0.2);
+}
+
+/* ==========================================================================
+   TYPING INDICATOR
+   ========================================================================== */
+
+.n2t-typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    min-height: 24px;
+}
+
+.n2t-typing-indicator:empty {
+    display: none;
+}
+
+.n2t-typing-text {
+    font-size: 12px;
+    color: rgba(156, 163, 175, 0.7);
+    font-style: italic;
+}
+
+.n2t-typing-dots {
+    display: flex;
+    gap: 3px;
+}
+
+.n2t-typing-dot {
+    width: 6px;
+    height: 6px;
+    background: rgba(156, 163, 175, 0.5);
+    border-radius: 50%;
+    animation: typing-bounce 1.4s ease-in-out infinite;
+}
+
+.n2t-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.n2t-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-4px); }
+}
+
+/* ==========================================================================
+   EMOTION ROOM SELECTOR
+   ENTERPRISE V10.143: Fixed grid layout for chat emotion rooms
+   Layout: 2 columns (positive | negative), 5 rows each
+   ========================================================================== */
+
+/* Grid container - 2 columns for positive/negative emotions */
+.emotion-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+/* Emotion card - compact style for sidebar */
+.emotion-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 4px;
+    background: rgba(55, 65, 81, 0.3);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 60px;
+}
+
+.emotion-card:hover {
+    background: rgba(55, 65, 81, 0.5);
+    border-color: rgba(139, 92, 246, 0.3);
+    transform: translateY(-2px);
+}
+
+.emotion-card.active,
+.emotion-card.selected {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+.emotion-card .emotion-emoji {
+    font-size: 24px;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.emotion-card .emotion-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: #e5e7eb;
+    text-align: center;
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.emotion-card .emotion-count {
+    font-size: 8px;
+    color: rgba(156, 163, 175, 0.6);
+    margin-top: 2px;
+}
+
+/* Online indicator dot */
+.emotion-card .online-dot {
+    width: 6px;
+    height: 6px;
+    background: #10b981;
+    border-radius: 50%;
+    margin-top: 2px;
+}
+
+/* Mobile responsive - keep 2 columns */
+@media (max-width: 640px) {
+    .emotion-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+    }
+
+    .emotion-card {
+        padding: 6px 4px;
+        min-height: 50px;
+    }
+
+    .emotion-card .emotion-emoji {
+        font-size: 20px;
+    }
+
+    .emotion-card .emotion-label {
+        font-size: 8px;
+    }
+}
+
+/* Legacy n2t- prefixed classes (for backward compatibility) */
+.n2t-emotion-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.n2t-emotion-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 12px;
+    background: rgba(55, 65, 81, 0.3);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.n2t-emotion-card:hover {
+    background: rgba(55, 65, 81, 0.5);
+    border-color: rgba(139, 92, 246, 0.3);
+    transform: translateY(-2px);
+}
+
+.n2t-emotion-card.active {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+.n2t-emotion-emoji {
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.n2t-emotion-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #e5e7eb;
+    text-align: center;
+}
+
+.n2t-emotion-count {
+    font-size: 10px;
+    color: rgba(156, 163, 175, 0.6);
+    margin-top: 4px;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 640px) {
+    .n2t-emoji-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
+
+    .n2t-message {
+        max-width: 95%;
+    }
+
+    .n2t-input-main {
+        padding: 6px 8px;
+    }
+
+    .n2t-input-btn {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+/* ==========================================================================
+   ENTERPRISE V10.88: CENSORED/DELETED MESSAGES
+   Security: Shows that a message was moderated without revealing content
+   ========================================================================== */
+
+.n2t-deleted-message {
+    opacity: 0.6;
+}
+
+.n2t-deleted-message .n2t-message-avatar {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+}
+
+.n2t-censored-bubble {
+    background: rgba(107, 114, 128, 0.1) !important;
+    border: none !important;
+    padding: 4px 10px !important;
+}
+
+.n2t-censored-message {
+    color: #6b7280 !important;
+    font-style: italic;
+    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.n2t-censored-message svg {
+    width: 12px;
+    height: 12px;
+    color: #9ca3af;
+    opacity: 0.6;
+}
+
+/* ==========================================================================
+   ANIMATED EMOTICONS (MSN STYLE) - ENTERPRISE V11.9
+   Chat rooms only - vintage MSN Messenger emoticons
+   ========================================================================== */
+
+/* Emoticon in messages */
+.chat-emoticon {
+    display: inline-block;
+    vertical-align: middle;
+    width: 24px;
+    height: 24px;
+    margin: 0 2px;
+    object-fit: contain;
+}
+
+.chat-emoticon.animated {
+    /* Smooth rendering for GIF animations */
+    image-rendering: auto;
+}
+
+/* Emoticon picker container */
+.n2t-emoji-picker-container {
+    background: #1f2937;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* Tab toggle (Emoji / MSN) */
+.n2t-emoji-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 8px;
+    background: #111827;
+    border-bottom: 1px solid #374151;
+}
+
+.n2t-emoji-tab {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: #9ca3af;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.n2t-emoji-tab:hover {
+    background: #374151;
+    color: #e5e7eb;
+}
+
+.n2t-emoji-tab.active {
+    background: #374151;
+    color: #fff;
+}
+
+/* Tab content */
+.n2t-emoji-tab-content {
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.n2t-emoji-tab-content.hidden {
+    display: none;
+}
+
+/* Emoticon picker inner */
+.n2t-emoticon-picker {
+    padding: 0;
+}
+
+.emoticon-picker-container {
+    background: transparent;
+}
+
+/* Emoticon category tabs */
+.emoticon-category-tab {
+    background: transparent;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.emoticon-category-tab:hover,
+.emoticon-category-tab.active {
+    background: #374151;
+    color: #fff;
+}
+
+/* Emoticon grid */
+.emoticon-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.emoticon-btn {
+    background: transparent;
+    border: none;
+    padding: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emoticon-btn:hover {
+    background: #374151;
+    transform: scale(1.1);
+}
+
+.emoticon-btn img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+
+/* Category content */
+.emoticon-category-content h5 {
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    padding: 0 4px;
+}
+
+.emoticon-category-content.hidden {
+    display: none;
+}
+
+/* Emoticon picker footer */
+.emoticon-picker-container > div:last-child {
+    background: #111827;
+    color: #6b7280;
+    font-size: 11px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .emoticon-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+
+    .emoticon-btn img {
+        width: 24px;
+        height: 24px;
+    }
+
+    .n2t-emoji-tab {
+        padding: 6px 8px;
+        font-size: 12px;
+    }
+}

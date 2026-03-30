@@ -1,0 +1,334 @@
+/**
+ * ================================================================================
+ * SERVICE WORKER NOTIFICATIONS CSS - ENTERPRISE GALAXY LEVEL
+ * ================================================================================
+ *
+ * PURPOSE:
+ * Styles for Service Worker update notifications and cache status UI
+ *
+ * COMPONENTS:
+ * - Update notification banner
+ * - Cache stats display
+ * - Browser not supported message
+ * - Registration error display
+ *
+ * DESIGN PRINCIPLES:
+ * - Non-intrusive (bottom-right corner)
+ * - Accessible (WCAG 2.1 AA compliant)
+ * - Responsive (mobile-first)
+ * - Smooth animations (60fps)
+ * - Dark mode support
+ *
+ * ================================================================================
+ */
+
+/* ============================================================================
+   SW UPDATE NOTIFICATION
+   ============================================================================ */
+
+.sw-update-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: none; /* Hidden by default, shown via JS */
+
+    /* Animation */
+    animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.sw-update-content {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 400px;
+    min-width: 300px;
+
+    /* Glassmorphism effect */
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.sw-update-icon {
+    font-size: 24px;
+    animation: rotate 2s linear infinite;
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.sw-update-text {
+    flex: 1;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.sw-update-btn {
+    background: #ffffff;
+    color: #667eea;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.sw-update-btn:hover {
+    background: #f0f0f0;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.sw-update-btn:active {
+    transform: translateY(0);
+}
+
+.sw-update-btn-secondary {
+    background: transparent;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.sw-update-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.8);
+}
+
+/* ============================================================================
+   CACHE STATS DISPLAY
+   ============================================================================ */
+
+.cache-stats {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 8px;
+    font-size: 13px;
+    color: #1e40af;
+    font-weight: 500;
+}
+
+.cache-stats-icon {
+    font-size: 16px;
+}
+
+.cache-stats-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cache-stats-label {
+    font-size: 11px;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.cache-stats-value {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* Status indicators */
+.cache-stats.cache-healthy {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.2);
+    color: #065f46;
+}
+
+.cache-stats.cache-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.2);
+    color: #92400e;
+}
+
+.cache-stats.cache-error {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: #991b1b;
+}
+
+/* ============================================================================
+   BROWSER NOT SUPPORTED MESSAGE
+   ============================================================================ */
+
+.sw-not-supported {
+    display: none; /* Shown via JS if SW not supported */
+    background: #fef3c7;
+    border: 1px solid #fbbf24;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 16px 0;
+    font-size: 14px;
+    color: #92400e;
+}
+
+.sw-not-supported::before {
+    content: '⚠️ ';
+    margin-right: 8px;
+}
+
+/* ============================================================================
+   REGISTRATION ERROR MESSAGE
+   ============================================================================ */
+
+.sw-registration-error {
+    display: none; /* Shown via JS on error */
+    background: #fee2e2;
+    border: 1px solid #ef4444;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 16px 0;
+    font-size: 14px;
+    color: #991b1b;
+}
+
+.sw-registration-error::before {
+    content: '❌ ';
+    margin-right: 8px;
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN (Mobile)
+   ============================================================================ */
+
+@media (max-width: 640px) {
+    .sw-update-notification {
+        bottom: 10px;
+        right: 10px;
+        left: 10px;
+    }
+
+    .sw-update-content {
+        min-width: unset;
+        max-width: unset;
+        flex-wrap: wrap;
+    }
+
+    .sw-update-text {
+        flex-basis: 100%;
+    }
+
+    .sw-update-btn,
+    .sw-update-btn-secondary {
+        flex: 1;
+    }
+}
+
+/* ============================================================================
+   DARK MODE SUPPORT
+   ============================================================================ */
+
+@media (prefers-color-scheme: dark) {
+    .cache-stats {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.3);
+        color: #93c5fd;
+    }
+
+    .cache-stats.cache-healthy {
+        background: rgba(16, 185, 129, 0.2);
+        border-color: rgba(16, 185, 129, 0.3);
+        color: #6ee7b7;
+    }
+
+    .cache-stats.cache-warning {
+        background: rgba(245, 158, 11, 0.2);
+        border-color: rgba(245, 158, 11, 0.3);
+        color: #fcd34d;
+    }
+
+    .cache-stats.cache-error {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: rgba(239, 68, 68, 0.3);
+        color: #fca5a5;
+    }
+
+    .sw-not-supported {
+        background: rgba(245, 158, 11, 0.2);
+        border-color: rgba(245, 158, 11, 0.4);
+        color: #fcd34d;
+    }
+
+    .sw-registration-error {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: rgba(239, 68, 68, 0.4);
+        color: #fca5a5;
+    }
+}
+
+/* ============================================================================
+   ACCESSIBILITY ENHANCEMENTS
+   ============================================================================ */
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .sw-update-content {
+        border-width: 2px;
+    }
+
+    .sw-update-btn,
+    .sw-update-btn-secondary {
+        border-width: 2px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .sw-update-notification {
+        animation: none;
+    }
+
+    .sw-update-icon {
+        animation: none;
+    }
+
+    .sw-update-btn,
+    .sw-update-btn-secondary {
+        transition: none;
+    }
+}
+
+/* Focus visible (keyboard navigation) */
+.sw-update-btn:focus-visible,
+.sw-update-btn-secondary:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}

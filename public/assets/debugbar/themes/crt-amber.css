@@ -1,0 +1,125 @@
+/**
+ * DEBUGBAR CRT AMBER THEME - Enterprise Retro Terminal
+ *
+ * Retro terminal amber CRT monitor style with glowing text effects.
+ * Perfect for developers who appreciate vintage computing aesthetics.
+ */
+
+/* Main debugbar container */
+.phpdebugbar {
+    background: rgba(0, 0, 0, 0.95) !important;
+    border-top: 2px solid #ffb000 !important;
+    font-family: "Courier New", Courier, monospace !important;
+}
+
+/* Tabs */
+.phpdebugbar a.phpdebugbar-tab {
+    color: #ffb000 !important;
+    text-shadow: 0 0 5px rgba(255, 176, 0, 0.5) !important;
+    transition: all 0.2s ease !important;
+}
+
+.phpdebugbar a.phpdebugbar-tab:hover {
+    color: #ffd700 !important;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.7) !important;
+}
+
+.phpdebugbar a.phpdebugbar-tab.phpdebugbar-active {
+    background: rgba(255, 176, 0, 0.15) !important;
+    color: #ffd700 !important;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.9) !important;
+    border-bottom: 2px solid #ffb000 !important;
+}
+
+/* Body panel */
+.phpdebugbar-body {
+    background: rgba(0, 0, 0, 0.95) !important;
+    color: #ffb000 !important;
+    border-top: 1px solid #ffb000 !important;
+}
+
+/* Widget lists */
+.phpdebugbar-widgets-list li,
+.phpdebugbar-widgets-list span,
+.phpdebugbar-widgets-list div {
+    color: #ffb000 !important;
+}
+
+.phpdebugbar-widgets-list li:hover {
+    background: rgba(255, 176, 0, 0.1) !important;
+}
+
+/* Values and labels */
+.phpdebugbar-widgets-value,
+.phpdebugbar-widgets-name {
+    color: #ffd700 !important;
+}
+
+/* SQL Queries widget */
+.phpdebugbar-widgets-sqlqueries .phpdebugbar-widgets-status,
+.phpdebugbar-widgets-sqlqueries .phpdebugbar-widgets-status *,
+.phpdebugbar-widgets-status,
+.phpdebugbar-widgets-status * {
+    background: #ffb000 !important;
+    color: #000 !important;
+    font-weight: bold !important;
+}
+
+.phpdebugbar-widgets-sql,
+.phpdebugbar-widgets-sql span,
+.phpdebugbar-widgets-sql code,
+.phpdebugbar-widgets-sql pre {
+    color: #ffb000 !important;
+    background: rgba(20, 15, 0, 0.5) !important;
+}
+
+.phpdebugbar-widgets-sql .sql-keyword {
+    color: #ffd700 !important;
+    font-weight: bold !important;
+}
+
+/* Timeline widget */
+.phpdebugbar-widgets-timeline .phpdebugbar-widgets-measure {
+    background: rgba(255, 176, 0, 0.3) !important;
+    border-left: 2px solid #ffb000 !important;
+}
+
+.phpdebugbar-widgets-timeline .phpdebugbar-widgets-measure:hover {
+    background: rgba(255, 176, 0, 0.5) !important;
+}
+
+.phpdebugbar-widgets-timeline span,
+.phpdebugbar-widgets-timeline div {
+    background: transparent !important;
+    color: #ffb000 !important;
+}
+
+/* Messages and exceptions */
+.phpdebugbar-widgets-messages pre,
+.phpdebugbar-widgets-exceptions pre {
+    background: rgba(20, 15, 0, 0.5) !important;
+    color: #ffb000 !important;
+    border: 1px solid rgba(255, 176, 0, 0.3) !important;
+}
+
+/* General text in body */
+.phpdebugbar-body span,
+.phpdebugbar-body div:not(.phpdebugbar-widgets-measure),
+.phpdebugbar-body td,
+.phpdebugbar-body th,
+.phpdebugbar-body li {
+    color: #ffb000 !important;
+}
+
+/* Headers in widgets */
+.phpdebugbar-widgets-toolbar,
+.phpdebugbar-header {
+    background: rgba(20, 15, 0, 0.98) !important;
+    border-bottom: 1px solid #ffb000 !important;
+}
+
+/* Cache hits green glow */
+.phpdebugbar-widgets-list li:contains("[CACHE HIT]") {
+    color: #00ff00 !important;
+    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5) !important;
+}

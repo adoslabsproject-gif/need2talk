@@ -1,0 +1,460 @@
+/**
+ * need2talk Enterprise CSS - Main Stylesheet (SINGLE SOURCE OF TRUTH)
+ *
+ * Optimized for 100k+ concurrent users with:
+ * - Critical path CSS loading
+ * - Component-based architecture
+ * - Performance-first utilities
+ * - Real-time feature styling
+ * - Enterprise security integration
+ * - Color palette: ONLY defined in tailwind.config.js
+ *
+ * IMPORTANT: This file does NOT hardcode ANY colors.
+ * All colors come from Tailwind config via utility classes and CSS variables.
+ */
+
+/**
+ * ENTERPRISE COMPONENT IMPORTS
+ *
+ * Custom components integrated into build for performance
+ * Benefits: Single HTTP request, minified together, cached forever
+ * IMPORTANT: @import MUST come BEFORE @tailwind directives for PostCSS
+ */
+@import './components/enterprise-audio-player.css';
+@import './components/enterprise-reactions.css';
+@import './components/moderation-portal.css';
+@import './admin-custom.css';
+@import '../public/assets/css/components/emotion-filter.css';
+
+/* Tailwind CSS Base - Foundation layer */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * ENTERPRISE BASE LAYER
+ *
+ * Global styles with performance optimizations
+ * Colors are referenced via Tailwind classes, NOT hardcoded hex values
+ */
+@layer base {
+  /* High-performance font loading */
+  html {
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Performance optimizations for 100k+ users */
+  body {
+    @apply bg-brand-midnight text-neutral-white;
+    /* Prevent layout shifts */
+    min-height: 100vh;
+  }
+  
+  /* Enterprise typography hierarchy */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold text-neutral-white;
+    /* Performance optimization */
+    contain: layout style;
+  }
+  
+  /* Enterprise form styling - Uses Tailwind palette */
+  input, textarea, select {
+    @apply bg-brand-charcoal border-neutral-darkGray text-neutral-white rounded-md shadow-sm;
+  }
+  
+  input:focus, textarea:focus, select:focus {
+    @apply border-accent-violet ring-2 ring-accent-violet/20 text-neutral-white;
+    /* Optimize focus transitions */
+    transition: border-color 150ms ease-in-out, box-shadow 150ms ease-in-out;
+  }
+
+  input::placeholder, textarea::placeholder {
+    @apply text-neutral-gray;
+  }
+
+  /* Links */
+  a {
+    @apply text-accent-purple hover:text-accent-lavender;
+    text-decoration: none;
+    transition: color 150ms ease-in-out;
+  }
+}
+
+/**
+ * ENTERPRISE COMPONENTS LAYER
+ * 
+ * Reusable components optimized for need2talk platform
+ * All colors use Tailwind utility classes
+ */
+@layer components {
+  /* Audio Player Component - Core need2talk feature */
+  .audio-player {
+    @apply bg-brand-charcoal/95 backdrop-blur-xl rounded-lg shadow-md p-6 border border-accent-violet/20;
+  }
+
+  .audio-player:hover {
+    @apply shadow-lg border-accent-violet/40;
+    transition: all 200ms ease-in-out;
+  }
+  
+  /* Enterprise Button System - Defined in tailwind.config.js plugin */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md font-medium;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-midnight;
+    transition: all 150ms ease-in-out;
+  }
+  
+  /* Enterprise Card System */
+  .card {
+    @apply bg-brand-charcoal/95 backdrop-blur-xl rounded-lg shadow-md p-6 border border-neutral-darkGray;
+    /* Performance optimization */
+    contain: layout style paint;
+  }
+
+  .card-header {
+    @apply border-b border-accent-violet/20 pb-4 mb-4;
+  }
+  
+  /* Enterprise Navigation */
+  .nav-primary {
+    @apply bg-brand-midnight/95 backdrop-blur-lg shadow-sm border-b border-accent-violet/20;
+    /* Sticky navigation optimization */
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+
+  .nav-item {
+    @apply px-4 py-2 rounded-md text-neutral-silver hover:text-accent-violet hover:bg-accent-violet/10;
+    transition: all 150ms ease-in-out;
+  }
+
+  .nav-item.active {
+    @apply text-cool-cyan bg-cool-cyan/10;
+  }
+
+  /* Badge system */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-primary {
+    @apply bg-accent-violet/20 text-accent-lavender;
+  }
+
+  .badge-success {
+    @apply bg-cool-cyan/20 text-cool-cyan;
+  }
+
+  .badge-danger {
+    @apply bg-energy-pink/20 text-energy-pink;
+  }
+
+  /* Alert system */
+  .alert {
+    @apply p-4 rounded-lg border;
+  }
+
+  .alert-info {
+    @apply bg-cool-teal/10 border-cool-teal text-cool-cyan;
+  }
+
+  .alert-success {
+    @apply bg-cool-cyan/10 border-cool-cyan text-cool-ice;
+  }
+
+  .alert-warning {
+    @apply bg-accent-lavender/10 border-accent-lavender text-accent-lavender;
+  }
+
+  .alert-danger {
+    @apply bg-energy-pink/10 border-energy-pink text-energy-pink;
+  }
+}
+
+/**
+ * ENTERPRISE UTILITIES LAYER
+ *
+ * Performance-optimized utilities for specific needs
+ */
+@layer utilities {
+  /* GPU acceleration utilities */
+  .gpu-accelerate {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+  
+  /* Performance animation utilities */
+  .animate-fade-in {
+    animation: fade-in 500ms ease-in-out;
+  }
+  
+  .animate-slide-up {
+    animation: slide-up 300ms ease-out;
+  }
+  
+  /* Gradient utilities - Use Tailwind colors dynamically */
+  .bg-gradient-aurora {
+    background: linear-gradient(135deg, theme('colors.accent.violet'), theme('colors.accent.purple'));
+  }
+
+  .bg-gradient-cool {
+    background: linear-gradient(135deg, theme('colors.cool.teal'), theme('colors.cool.cyan'));
+  }
+
+  .bg-gradient-animated {
+    background: linear-gradient(270deg, 
+      theme('colors.accent.violet'), 
+      theme('colors.accent.purple'), 
+      theme('colors.cool.teal'), 
+      theme('colors.accent.lavender')
+    );
+    background-size: 800% 800%;
+    animation: gradientShift 8s ease infinite;
+  }
+
+  .text-gradient-aurora {
+    background: linear-gradient(to right, 
+      theme('colors.accent.violet'), 
+      theme('colors.cool.cyan'), 
+      theme('colors.accent.lavender')
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  /* Glow effects - Use current palette */
+  .glow-primary {
+    box-shadow: 0 0 20px theme('colors.accent.violet' / 50%);
+  }
+
+  .glow-secondary {
+    box-shadow: 0 0 20px theme('colors.cool.cyan' / 50%);
+  }
+
+  .glow-danger {
+    box-shadow: 0 0 20px theme('colors.energy.pink' / 50%);
+  }
+
+  /* Glass morphism */
+  .glass {
+    @apply bg-brand-charcoal/80 backdrop-blur-xl border border-neutral-darkGray/50;
+  }
+
+  .glass-strong {
+    @apply bg-brand-charcoal/95 backdrop-blur-2xl border border-accent-violet/30;
+  }
+}
+
+/**
+ * ENTERPRISE KEYFRAMES
+ * 
+ * Optimized animations for real-time features
+ */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/**
+ * ENTERPRISE RESPONSIVE DESIGN
+ * 
+ * Optimized for all devices supporting 100k+ users
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/**
+ * PRINT STYLES
+ */
+@media print {
+  body {
+    @apply bg-white text-black;
+  }
+}
+
+/**
+ * ============================================================================
+ * CHAT PAGE LAYOUT - ENTERPRISE V9.6 (2025-12-05)
+ * Desktop: 2 columns (sidebar 280px + main flex-1)
+ * Mobile: Stacked vertically (100% width each)
+ *
+ * Structure: .chat-layout > .chat-sidebar + .chat-main
+ * ============================================================================
+ */
+
+/* Base layout - mobile first (stacked) */
+.chat-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.chat-sidebar {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.chat-main {
+  width: 100%;
+  flex: 1;
+  min-width: 0; /* Prevent flex overflow */
+}
+
+/* Desktop layout (lg: 1024px+) - 2 columns */
+@media (min-width: 1024px) {
+  .chat-layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .chat-sidebar {
+    width: 280px;
+    position: sticky;
+    top: 6rem; /* Below header */
+    max-height: calc(100vh - 8rem);
+    overflow-y: auto;
+  }
+
+  .chat-main {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/**
+ * ============================================================================
+ * LIGHTBOX LAYOUT - ENTERPRISE V8.0 (2025-12-01)
+ * Desktop: Photo LEFT 55%, Comments RIGHT 45%
+ * Mobile: Photo TOP, Comments BELOW (stacked)
+ *
+ * NOTE: These MUST be outside @layer to ensure they work with dynamic classes
+ * generated in JavaScript template strings (PhotoLightbox.js)
+ * ============================================================================
+ */
+
+/* Mobile lightbox max heights */
+.max-h-\[90vh\] {
+  max-height: 90vh;
+}
+.max-h-\[92vh\] {
+  max-height: 92vh;
+}
+
+/* Mobile lightbox layout (< 1024px) */
+@media (max-width: 1023px) {
+  .lightbox-photo-mobile {
+    min-height: 150px;
+    max-height: 35vh;
+    flex-shrink: 0;
+  }
+  .lightbox-sidebar-mobile {
+    min-height: 0;
+    max-height: calc(92vh - 35vh - 3rem);
+    flex: 1;
+  }
+  #lightbox-sidebar-scroll {
+    /* Samsung Browser / iOS Safari scroll fix */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+  }
+}
+
+/* Desktop layout (lg: = min-width 1024px) */
+@media (min-width: 1024px) {
+  .lg\:flex-row {
+    flex-direction: row;
+  }
+  .lg\:w-\[55\%\] {
+    width: 55%;
+  }
+  .lg\:w-\[45\%\] {
+    width: 45%;
+  }
+  .lg\:h-full {
+    height: 100%;
+  }
+  .lg\:h-\[92vh\] {
+    height: 92vh;
+  }
+  .lg\:w-\[96vw\] {
+    width: 96vw;
+  }
+  .lg\:max-h-\[92vh\] {
+    max-height: 92vh;
+  }
+  .lg\:min-w-\[400px\] {
+    min-width: 400px;
+  }
+  .lg\:overflow-hidden {
+    overflow: hidden;
+  }
+  /* Desktop: remove mobile constraints */
+  .lightbox-photo-mobile {
+    min-height: auto;
+    max-height: none;
+  }
+  .lightbox-sidebar-mobile {
+    max-height: none;
+  }
+}
+
+/**
+ * ============================================================================
+ * FIREFOX PERFORMANCE FIX - ENTERPRISE V10.86
+ * ============================================================================
+ * Firefox handles backdrop-filter via CPU (not GPU like Chrome/Safari),
+ * causing 100%+ CPU usage and battery drain. This disables blur effects
+ * for Firefox while maintaining visual appearance with existing backgrounds.
+ *
+ * Detection: JavaScript adds .is-firefox class to <html> element on page load
+ * @see app/Views/layouts/guest.php, app/Views/layouts/app-post-login.php
+ *
+ * NOTE: @-moz-document url-prefix() is deprecated and removed in Firefox 61+
+ * NOTE: We only disable backdrop-filter, backgrounds keep their original colors
+ */
+html.is-firefox *,
+html.is-firefox *::before,
+html.is-firefox *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}

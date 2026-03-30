@@ -1,0 +1,553 @@
+/**
+ * RECORDER COMPONENT - need2talk
+ * /public/assets/css/components/recorder.css
+ * Registratore audio scalabile per migliaia di utenti simultanei
+ */
+
+/* ===== RECORDER VARIABLES ===== */
+:root {
+    --recorder-bg: rgba(255, 255, 255, 0.05);
+    --recorder-border: rgba(255, 255, 255, 0.1);
+    --recorder-shadow: 0 20px 40px rgba(147, 51, 234, 0.3);
+    --recorder-recording: #ef4444;
+    --recorder-recording-glow: rgba(239, 68, 68, 0.4);
+    --recorder-ready: #22c55e;
+    --recorder-processing: #f59e0b;
+    --recorder-transition: all 0.3s ease;
+}
+
+/* ===== RECORDER CONTAINER ===== */
+.audio-recorder {
+    background: var(--recorder-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--recorder-border);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    transition: var(--recorder-transition);
+    position: relative;
+    overflow: hidden;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.audio-recorder:hover {
+    border-color: rgba(147, 51, 234, 0.3);
+    box-shadow: var(--recorder-shadow);
+}
+
+/* ===== RECORDER STATES ===== */
+.audio-recorder.recording {
+    border-color: var(--recorder-recording);
+    box-shadow: 0 0 30px var(--recorder-recording-glow);
+}
+
+.audio-recorder.processing {
+    border-color: var(--recorder-processing);
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.4);
+}
+
+.audio-recorder.ready {
+    border-color: var(--recorder-ready);
+    box-shadow: 0 0 30px rgba(34, 197, 94, 0.4);
+}
+
+/* ===== RECORDER HEADER ===== */
+.recorder-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.recorder-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+    background: linear-gradient(135deg, var(--text-primary) 0%, #c084fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.recorder-subtitle {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ===== RECORDING CONTROLS ===== */
+.recorder-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.recorder-btn {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    transition: var(--recorder-transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    position: relative;
+    outline: none;
+}
+
+.recorder-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Record Button */
+.recorder-record-btn {
+    background: linear-gradient(135deg, var(--recorder-recording) 0%, #dc2626 100%);
+    color: white;
+    box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+}
+
+.recorder-record-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 12px 25px rgba(239, 68, 68, 0.4);
+}
+
+.recorder-record-btn.recording {
+    animation: recorder-pulse 2s infinite;
+}
+
+.recorder-record-btn.recording::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 2px solid var(--recorder-recording);
+    border-radius: 50%;
+    animation: recorder-ring 2s infinite;
+}
+
+@keyframes recorder-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+@keyframes recorder-ring {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1.4);
+        opacity: 0;
+    }
+}
+
+/* Stop Button */
+.recorder-stop-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.recorder-stop-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
+}
+
+/* Play Button */
+.recorder-play-btn {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-pink) 100%);
+    color: white;
+    box-shadow: 0 8px 20px rgba(147, 51, 234, 0.3);
+}
+
+.recorder-play-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 12px 25px rgba(147, 51, 234, 0.4);
+}
+
+/* Delete Button */
+.recorder-delete-btn {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--recorder-recording);
+    border: 2px solid rgba(239, 68, 68, 0.3);
+}
+
+.recorder-delete-btn:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.2);
+    transform: scale(1.05);
+}
+
+/* ===== RECORDING STATUS ===== */
+.recorder-status {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.recorder-status-text {
+    font-size: 0.875rem;
+    margin: 0 0 0.5rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.recorder-status-text.idle {
+    color: var(--text-secondary);
+}
+
+.recorder-status-text.recording {
+    color: var(--recorder-recording);
+    font-weight: 600;
+}
+
+.recorder-status-text.processing {
+    color: var(--recorder-processing);
+    font-weight: 600;
+}
+
+.recorder-status-text.ready {
+    color: var(--recorder-ready);
+    font-weight: 600;
+}
+
+.recorder-timer {
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    margin: 0;
+}
+
+.recorder-timer.recording {
+    color: var(--recorder-recording);
+    animation: recorder-timer-blink 1s infinite;
+}
+
+@keyframes recorder-timer-blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.5; }
+}
+
+/* ===== WAVEFORM VISUALIZATION ===== */
+.recorder-waveform {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    height: 60px;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 0.75rem;
+}
+
+.recorder-wave-bar {
+    width: 4px;
+    background: linear-gradient(to top, var(--primary-purple), var(--primary-pink));
+    border-radius: 2px;
+    transition: height 0.1s ease;
+    opacity: 0.3;
+}
+
+.recorder-waveform.recording .recorder-wave-bar {
+    opacity: 1;
+    animation: recorder-wave 0.5s ease-in-out infinite alternate;
+}
+
+.recorder-wave-bar:nth-child(2n) {
+    animation-delay: 0.1s;
+}
+
+.recorder-wave-bar:nth-child(3n) {
+    animation-delay: 0.2s;
+}
+
+.recorder-wave-bar:nth-child(4n) {
+    animation-delay: 0.3s;
+}
+
+@keyframes recorder-wave {
+    0% { height: 8px; }
+    100% { height: 40px; }
+}
+
+/* ===== RECORDING SETTINGS ===== */
+.recorder-settings {
+    margin-bottom: 1.5rem;
+}
+
+.recorder-settings-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 1rem 0;
+    text-align: center;
+}
+
+.recorder-quality {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.recorder-quality-option {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: var(--recorder-transition);
+}
+
+.recorder-quality-option:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.recorder-quality-option.active {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-pink) 100%);
+    color: white;
+    border-color: transparent;
+}
+
+/* ===== RECORDING INFO ===== */
+.recorder-info {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.recorder-info-item {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.recorder-info-label {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin: 0 0 0.25rem 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.recorder-info-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+/* ===== EMOTION SELECTOR ===== */
+.recorder-emotion {
+    margin-bottom: 1.5rem;
+}
+
+.recorder-emotion-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 1rem 0;
+    text-align: center;
+}
+
+.recorder-emotion-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 0.75rem;
+}
+
+.recorder-emotion-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    padding: 1rem 0.5rem;
+    cursor: pointer;
+    transition: var(--recorder-transition);
+    text-align: center;
+}
+
+.recorder-emotion-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(147, 51, 234, 0.3);
+}
+
+.recorder-emotion-btn.selected {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-pink) 100%);
+    border-color: transparent;
+    color: white;
+}
+
+.recorder-emotion-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.recorder-emotion-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin: 0;
+    color: inherit;
+}
+
+/* ===== RECORDING ACTIONS ===== */
+.recorder-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+
+.recorder-action-btn {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-pink) 100%);
+    border: none;
+    color: white;
+    padding: 0.875rem 1.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--recorder-transition);
+    outline: none;
+}
+
+.recorder-action-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(147, 51, 234, 0.4);
+}
+
+.recorder-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.recorder-action-btn.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.recorder-action-btn.secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+    .audio-recorder {
+        padding: 1.5rem;
+        margin: 0 1rem;
+    }
+    
+    .recorder-controls {
+        gap: 1rem;
+    }
+    
+    .recorder-btn {
+        width: 3.5rem;
+        height: 3.5rem;
+        font-size: 1.25rem;
+    }
+    
+    .recorder-info {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .recorder-emotion-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.5rem;
+    }
+    
+    .recorder-actions {
+        flex-direction: column;
+    }
+    
+    .recorder-action-btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .audio-recorder {
+        padding: 1rem;
+    }
+    
+    .recorder-controls {
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .recorder-btn {
+        width: 3rem;
+        height: 3rem;
+        font-size: 1rem;
+    }
+    
+    .recorder-emotion-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .recorder-waveform {
+        height: 40px;
+    }
+    
+    .recorder-wave-bar {
+        width: 3px;
+    }
+}
+
+/* ===== ACCESSIBILITY ===== */
+.recorder-btn:focus-visible,
+.recorder-quality-option:focus-visible,
+.recorder-emotion-btn:focus-visible,
+.recorder-action-btn:focus-visible {
+    outline: 2px solid var(--primary-purple);
+    outline-offset: 2px;
+}
+
+/* ===== PERFORMANCE OPTIMIZATIONS ===== */
+.audio-recorder {
+    contain: layout style;
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+    .audio-recorder,
+    .recorder-btn,
+    .recorder-action-btn {
+        transition: none;
+        animation: none;
+    }
+    
+    .recorder-record-btn.recording,
+    .recorder-record-btn.recording::before,
+    .recorder-timer.recording,
+    .recorder-waveform.recording .recorder-wave-bar {
+        animation: none;
+    }
+}
+/* ===== FIX: Font bianco per title e description ===== */
+#post-title,
+#post-description {
+    color: #ffffff !important;
+}
+
+#post-title::placeholder,
+#post-description::placeholder {
+    color: rgb(107, 114, 128) !important; /* gray-500 */
+}

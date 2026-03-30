@@ -1,0 +1,88 @@
+# Environment
+.env
+.env.*
+
+# Logs
+*.log
+storage/logs/
+
+# Cache and temporary
+storage/cache/
+storage/temp/
+storage/sessions/
+storage/framework/
+storage/debugbar/
+vendor/
+
+# Database
+*.sql
+*.dump
+*.sql.gz
+*.rdb
+*.db
+appendonlydir/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencies
+composer.phar
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# PHP
+.phpunit.result.cache
+.php_cs.cache
+.php-cs-fixer.cache
+*.pid
+
+# Uploads and user content
+storage/uploads/
+public/uploads/
+public/assets/uploads/
+
+# SSL
+*.crt
+*.key
+*.pem
+
+# Local config overrides
+config/*.local.php
+
+# Testing
+testing/load-results/
+testing/coverage/
+
+# Backups
+*.backup
+*.bak
+*~
+backups/
+
+# Lock files
+*.lock
+package-lock.json
+
+# GeoIP databases
+storage/geoip/
+
+# Binary caches
+.local-chromium/
+
+# Temporary
+*.tmp
+*.har

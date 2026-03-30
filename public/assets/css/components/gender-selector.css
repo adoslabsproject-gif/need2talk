@@ -1,0 +1,93 @@
+/**
+ * Gender Selector Component
+ * 
+ * Stile per i radio button del genere con design glass-morphism
+ * ottimizzato per need2talk
+ */
+
+.gender-option {
+    /* Tailwind @apply */
+    @apply flex items-center justify-center p-3 rounded-lg text-sm font-medium;
+    @apply border border-gray-600 bg-gray-700/30 text-gray-300;
+    @apply transition-all duration-200 ease-in-out;
+    @apply hover:border-purple-500/50 hover:bg-purple-500/10;
+    @apply cursor-pointer select-none;
+    
+    /* Fallback CSS */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: 1px solid #4b5563;
+    background-color: rgba(55, 65, 81, 0.3);
+    color: #d1d5db;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    user-select: none;
+    
+    /* Glass-morphism effect */
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.gender-option:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 12px rgba(139, 92, 246, 0.15);
+}
+
+.gender-option.selected {
+    /* Tailwind @apply */
+    @apply border-purple-500 bg-purple-500/20 text-purple-300;
+    /* Fallback CSS */
+    border-color: #8b5cf6;
+    background-color: rgba(139, 92, 246, 0.2);
+    color: #c4b5fd;
+    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.5), 0 6px 12px rgba(139, 92, 246, 0.25);
+}
+
+.gender-option.selected i {
+    /* Tailwind @apply */
+    @apply text-purple-400;
+    /* Fallback CSS */
+    color: #a78bfa;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .gender-option {
+        /* Tailwind @apply */
+        @apply text-xs p-2;
+        /* Fallback CSS */
+        font-size: 0.75rem;
+        padding: 0.5rem;
+    }
+}
+
+/* Accessibility improvements */
+.gender-option:focus-within {
+    /* Tailwind @apply */
+    @apply outline-none ring-2 ring-purple-500 ring-opacity-50;
+    /* Fallback CSS */
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.5);
+}
+
+/* Animation for selection */
+.gender-option.selected {
+    animation: genderSelect 0.3s ease-out;
+}
+
+@keyframes genderSelect {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}

@@ -1,0 +1,329 @@
+/**
+ * Enterprise Audio Player Styles - need2talk Galaxy
+ *
+ * Professional custom audio player UI matching need2talk design system
+ * Cross-browser compatible (Safari, Chrome, Firefox, Edge, Mobile)
+ *
+ * Design: Dark theme, purple accent, glassmorphism
+ * Performance: GPU-accelerated, smooth 60fps animations
+ * Accessibility: High contrast, focus states, ARIA support
+ */
+
+.enterprise-audio-player {
+    width: 100%;
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(31, 41, 55, 0.95) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.enterprise-audio-player:hover {
+    border-color: rgba(139, 92, 246, 0.4);
+    box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.2), 0 4px 6px -2px rgba(139, 92, 246, 0.1);
+}
+
+/* Hide native audio element */
+.enterprise-audio-player audio {
+    display: none;
+}
+
+/* Player Controls Container */
+.player-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Play/Pause Button */
+.player-play-btn {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+    border: none;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.3);
+}
+
+.player-play-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 12px -2px rgba(139, 92, 246, 0.5);
+}
+
+.player-play-btn:active {
+    transform: scale(0.95);
+}
+
+.player-play-btn:focus {
+    outline: 2px solid rgba(139, 92, 246, 0.5);
+    outline-offset: 2px;
+}
+
+/* Progress Container */
+.player-progress-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Time Display */
+.player-time-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #D1D5DB;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+.player-time-current {
+    color: #8B5CF6;
+}
+
+.player-time-separator {
+    color: #6B7280;
+}
+
+.player-time-total {
+    color: #9CA3AF;
+}
+
+/* Progress Bar (CROSS-BROWSER) */
+.player-progress-bar {
+    position: relative;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.player-progress-bar:hover {
+    transform: scaleY(1.1);
+}
+
+.player-progress-bar:focus {
+    outline: 2px solid rgba(139, 92, 246, 0.5);
+    outline-offset: 2px;
+}
+
+/* Progress Track (Background) */
+.player-progress-track {
+    position: absolute;
+    width: 100%;
+    height: 6px;
+    background: rgba(75, 85, 99, 0.5);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+/* Progress Fill (Current Time) */
+.player-progress-fill {
+    position: absolute;
+    height: 6px;
+    background: linear-gradient(90deg, #8B5CF6 0%, #A78BFA 100%);
+    border-radius: 3px;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 8px rgba(139, 92, 246, 0.6);
+}
+
+/* When dragging, disable transition for instant feedback */
+.player-progress-bar.dragging .player-progress-fill {
+    transition: none;
+}
+
+/* Progress Handle (Draggable Thumb) */
+.player-progress-handle {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border: 3px solid #8B5CF6;
+    border-radius: 50%;
+    margin-left: -8px; /* Center on position */
+    margin-top: -5px; /* Center vertically */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    transition: left 0.1s linear, transform 0.2s ease;
+    pointer-events: none; /* Let clicks pass through to bar */
+}
+
+/* Handle hover effect */
+.player-progress-bar:hover .player-progress-handle {
+    transform: scale(1.3);
+    box-shadow: 0 4px 8px rgba(139, 92, 246, 0.5);
+}
+
+/* When dragging */
+.player-progress-bar.dragging .player-progress-handle {
+    transform: scale(1.5);
+    transition: transform 0.2s ease; /* Keep transform transition, remove left */
+    box-shadow: 0 6px 12px rgba(139, 92, 246, 0.8);
+}
+
+/* Volume Button */
+.player-volume-btn {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(75, 85, 99, 0.3);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    color: #D1D5DB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.player-volume-btn:hover {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.4);
+    color: #A78BFA;
+}
+
+.player-volume-btn:active {
+    transform: scale(0.95);
+}
+
+/* Volume Slider */
+.player-volume-slider {
+    flex-shrink: 0;
+    width: 80px;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(75, 85, 99, 0.5);
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+
+/* Volume slider thumb (Chrome, Safari, Edge) */
+.player-volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #8B5CF6;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+}
+
+.player-volume-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 4px 8px rgba(139, 92, 246, 0.5);
+}
+
+/* Volume slider thumb (Firefox) */
+.player-volume-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #8B5CF6;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+}
+
+.player-volume-slider::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 4px 8px rgba(139, 92, 246, 0.5);
+}
+
+/* Icons */
+.player-icon-play,
+.player-icon-pause {
+    transition: opacity 0.2s ease;
+}
+
+/* Mobile Responsive */
+@media (max-width: 640px) {
+    .enterprise-audio-player {
+        padding: 12px;
+    }
+
+    .player-controls {
+        gap: 12px;
+    }
+
+    .player-play-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .player-time-display {
+        font-size: 12px;
+    }
+
+    .player-volume-slider {
+        width: 60px;
+    }
+}
+
+/* Touch device optimizations */
+@media (pointer: coarse) {
+    .player-progress-bar {
+        height: 32px; /* Larger touch target */
+    }
+
+    .player-progress-handle {
+        width: 20px;
+        height: 20px;
+        margin-left: -10px;
+        margin-top: -7px;
+    }
+}
+
+/* Dark mode support (if needed) */
+@media (prefers-color-scheme: dark) {
+    .enterprise-audio-player {
+        /* Already dark by default */
+    }
+}
+
+/* Accessibility: Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .enterprise-audio-player,
+    .player-play-btn,
+    .player-progress-fill,
+    .player-progress-handle,
+    .player-volume-btn {
+        transition: none;
+    }
+}
+
+/* Loading state (optional) */
+.enterprise-audio-player.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.enterprise-audio-player.loading .player-progress-fill {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}

@@ -1,0 +1,815 @@
+/**
+ * need2talk Moderation Portal - Enterprise CSS Component
+ *
+ * Extends the base Tailwind system with moderation-specific theming.
+ * Uses CSS custom properties for theme override without code duplication.
+ *
+ * Color Psychology: Fuchsia/Magenta conveys authority, vigilance, and action
+ * - Primary: Fuchsia (#d946ef) - Authority, alertness
+ * - Secondary: Violet (#8b5cf6) - Wisdom, judgment
+ * - Danger: Red - Bans, violations
+ * - Success: Emerald - Resolved, approved
+ *
+ * @package Need2Talk\Enterprise\Moderation
+ * @version 1.0.0
+ */
+
+/* ============================================================================
+ * CSS CUSTOM PROPERTIES - Moderation Theme Override
+ * These override the default brand colors when .mod-theme is applied
+ * ============================================================================ */
+
+.mod-theme {
+  /* Primary palette - Fuchsia/Magenta authority colors */
+  --mod-primary-50: #fdf4ff;
+  --mod-primary-100: #fae8ff;
+  --mod-primary-200: #f5d0fe;
+  --mod-primary-300: #f0abfc;
+  --mod-primary-400: #e879f9;
+  --mod-primary-500: #d946ef;
+  --mod-primary-600: #c026d3;
+  --mod-primary-700: #a21caf;
+  --mod-primary-800: #86198f;
+  --mod-primary-900: #701a75;
+
+  /* Secondary palette - Violet wisdom colors */
+  --mod-secondary-50: #f5f3ff;
+  --mod-secondary-100: #ede9fe;
+  --mod-secondary-200: #ddd6fe;
+  --mod-secondary-300: #c4b5fd;
+  --mod-secondary-400: #a78bfa;
+  --mod-secondary-500: #8b5cf6;
+  --mod-secondary-600: #7c3aed;
+  --mod-secondary-700: #6d28d9;
+  --mod-secondary-800: #5b21b6;
+  --mod-secondary-900: #4c1d95;
+
+  /* Surface colors - Dark authority theme */
+  --mod-bg-primary: #0f0f0f;
+  --mod-bg-secondary: #171717;
+  --mod-bg-tertiary: #1f1f1f;
+  --mod-bg-elevated: #262626;
+
+  /* Border colors */
+  --mod-border-subtle: rgba(217, 70, 239, 0.15);
+  --mod-border-default: rgba(217, 70, 239, 0.25);
+  --mod-border-strong: rgba(217, 70, 239, 0.4);
+
+  /* Text colors */
+  --mod-text-primary: #ffffff;
+  --mod-text-secondary: #a1a1aa;
+  --mod-text-muted: #71717a;
+  --mod-text-accent: #f0abfc;
+
+  /* Gradients */
+  --mod-gradient-primary: linear-gradient(135deg, #d946ef 0%, #a21caf 100%);
+  --mod-gradient-secondary: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  --mod-gradient-header: linear-gradient(135deg, #d946ef 0%, #8b5cf6 100%);
+
+  /* Shadows */
+  --mod-shadow-sm: 0 1px 2px rgba(217, 70, 239, 0.05);
+  --mod-shadow-md: 0 4px 6px rgba(217, 70, 239, 0.1);
+  --mod-shadow-lg: 0 10px 25px rgba(217, 70, 239, 0.15);
+  --mod-shadow-glow: 0 0 20px rgba(217, 70, 239, 0.3);
+}
+
+/* ============================================================================
+ * LAYOUT COMPONENTS
+ * ============================================================================ */
+
+/* Header - Fixed top navigation */
+.mod-header {
+  @apply fixed top-0 left-0 right-0 z-50;
+  background: var(--mod-bg-primary);
+  border-bottom: 1px solid var(--mod-border-subtle);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.mod-header-inner {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  @apply flex items-center justify-between;
+  height: 64px;
+}
+
+.mod-logo {
+  @apply text-xl sm:text-2xl font-bold;
+  background: var(--mod-gradient-header);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.mod-user-badge {
+  @apply flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm;
+  background: rgba(217, 70, 239, 0.1);
+  border: 1px solid var(--mod-border-subtle);
+  color: var(--mod-text-accent);
+}
+
+/* Sidebar - Fixed left navigation */
+.mod-sidebar {
+  @apply fixed left-0 bottom-0 overflow-y-auto z-40;
+  top: 64px;
+  width: 240px;
+  background: var(--mod-bg-primary);
+  border-right: 1px solid var(--mod-border-subtle);
+  padding: 1.5rem 0.75rem;
+}
+
+.mod-nav-section {
+  @apply mb-6;
+}
+
+.mod-nav-label {
+  @apply px-3 mb-2 text-xs font-semibold uppercase tracking-wider;
+  color: var(--mod-text-muted);
+}
+
+.mod-nav-link {
+  @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium;
+  @apply transition-all duration-200;
+  color: var(--mod-text-secondary);
+  text-decoration: none;
+}
+
+.mod-nav-link:hover {
+  background: rgba(217, 70, 239, 0.1);
+  color: var(--mod-text-accent);
+}
+
+.mod-nav-link.active {
+  background: rgba(217, 70, 239, 0.15);
+  color: var(--mod-primary-300);
+  border: 1px solid var(--mod-border-default);
+}
+
+.mod-nav-link svg {
+  @apply w-5 h-5 flex-shrink-0;
+}
+
+.mod-nav-separator {
+  @apply my-4 mx-3;
+  height: 1px;
+  background: var(--mod-border-subtle);
+}
+
+/* Main content area */
+.mod-main {
+  margin-left: 240px;
+  margin-top: 64px;
+  min-height: calc(100vh - 64px);
+  padding: 2rem;
+  background: var(--mod-bg-primary);
+}
+
+.mod-container {
+  @apply max-w-6xl mx-auto;
+}
+
+/* Page header */
+.mod-page-header {
+  @apply mb-8;
+}
+
+.mod-page-title {
+  @apply text-2xl sm:text-3xl font-bold mb-2;
+  color: var(--mod-text-primary);
+}
+
+.mod-page-subtitle {
+  color: var(--mod-text-secondary);
+}
+
+/* ============================================================================
+ * CARD COMPONENTS
+ * ============================================================================ */
+
+.mod-card {
+  background: var(--mod-bg-secondary);
+  border: 1px solid var(--mod-border-subtle);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.mod-card-header {
+  @apply flex items-center justify-between pb-4 mb-4;
+  border-bottom: 1px solid var(--mod-border-subtle);
+}
+
+.mod-card-title {
+  @apply text-lg font-semibold;
+  color: var(--mod-text-primary);
+}
+
+.mod-card-body {
+  color: var(--mod-text-secondary);
+}
+
+/* Elevated card variant */
+.mod-card-elevated {
+  background: var(--mod-bg-tertiary);
+  box-shadow: var(--mod-shadow-md);
+}
+
+/* ============================================================================
+ * STATS GRID
+ * ============================================================================ */
+
+.mod-stats-grid {
+  @apply grid gap-4 mb-6;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.mod-stat-card {
+  @apply text-center p-5 rounded-xl;
+  background: var(--mod-bg-secondary);
+  border: 1px solid var(--mod-border-subtle);
+  transition: all 0.2s ease;
+}
+
+.mod-stat-card:hover {
+  border-color: var(--mod-border-default);
+  transform: translateY(-2px);
+  box-shadow: var(--mod-shadow-md);
+}
+
+.mod-stat-value {
+  @apply text-3xl font-bold;
+  background: var(--mod-gradient-header);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.mod-stat-label {
+  @apply text-sm mt-1;
+  color: var(--mod-text-muted);
+}
+
+.mod-stat-trend {
+  @apply text-xs mt-2 inline-flex items-center gap-1;
+}
+
+.mod-stat-trend-up {
+  color: #10b981;
+}
+
+.mod-stat-trend-down {
+  color: #ef4444;
+}
+
+/* ============================================================================
+ * BUTTON COMPONENTS
+ * ============================================================================ */
+
+.mod-btn {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg;
+  @apply text-sm font-medium transition-all duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  focus-ring-offset-color: var(--mod-bg-primary);
+}
+
+.mod-btn-primary {
+  background: var(--mod-gradient-primary);
+  color: white;
+  border: none;
+}
+
+.mod-btn-primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: var(--mod-shadow-glow);
+}
+
+.mod-btn-primary:focus {
+  @apply ring-purple-500;
+}
+
+.mod-btn-secondary {
+  background: var(--mod-bg-tertiary);
+  color: var(--mod-text-secondary);
+  border: 1px solid var(--mod-border-default);
+}
+
+.mod-btn-secondary:hover {
+  background: var(--mod-bg-elevated);
+  color: var(--mod-text-primary);
+  border-color: var(--mod-border-strong);
+}
+
+.mod-btn-danger {
+  @apply bg-red-600/20 text-red-300;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.mod-btn-danger:hover {
+  @apply bg-red-600/30;
+}
+
+.mod-btn-success {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.mod-btn-success:hover {
+  background: rgba(16, 185, 129, 0.3);
+}
+
+.mod-btn-sm {
+  @apply px-3 py-1.5 text-xs;
+}
+
+.mod-btn-lg {
+  @apply px-6 py-3 text-base;
+}
+
+.mod-btn:disabled {
+  @apply opacity-50 cursor-not-allowed;
+  transform: none;
+  filter: none;
+}
+
+/* ============================================================================
+ * TABLE COMPONENTS
+ * ============================================================================ */
+
+.mod-table-container {
+  @apply overflow-x-auto rounded-lg;
+  background: var(--mod-bg-secondary);
+  border: 1px solid var(--mod-border-subtle);
+}
+
+.mod-table {
+  @apply w-full text-sm;
+  border-collapse: collapse;
+}
+
+.mod-table th {
+  @apply px-4 py-3 text-left font-semibold;
+  background: rgba(217, 70, 239, 0.1);
+  color: var(--mod-text-accent);
+  border-bottom: 1px solid var(--mod-border-default);
+}
+
+.mod-table td {
+  @apply px-4 py-3;
+  color: var(--mod-text-secondary);
+  border-bottom: 1px solid var(--mod-border-subtle);
+}
+
+.mod-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.mod-table tbody tr:hover {
+  background: rgba(217, 70, 239, 0.05);
+}
+
+.mod-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ============================================================================
+ * BADGE COMPONENTS
+ * ============================================================================ */
+
+.mod-badge {
+  @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium;
+}
+
+.mod-badge-primary {
+  background: rgba(217, 70, 239, 0.2);
+  color: var(--mod-primary-300);
+}
+
+.mod-badge-success {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+
+.mod-badge-warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+}
+
+.mod-badge-danger {
+  @apply bg-red-500/20 text-red-300;
+}
+
+.mod-badge-info {
+  @apply bg-blue-500/20 text-blue-300;
+}
+
+.mod-badge-neutral {
+  background: var(--mod-bg-tertiary);
+  color: var(--mod-text-muted);
+}
+
+/* ============================================================================
+ * FORM COMPONENTS
+ * ============================================================================ */
+
+.mod-form-group {
+  @apply mb-4;
+}
+
+.mod-form-label {
+  @apply block text-sm font-medium mb-2;
+  color: var(--mod-text-secondary);
+}
+
+.mod-form-input {
+  @apply w-full px-4 py-2.5 rounded-lg text-sm;
+  background: var(--mod-bg-tertiary);
+  border: 1px solid var(--mod-border-default);
+  color: var(--mod-text-primary);
+  transition: all 0.2s ease;
+}
+
+.mod-form-input::placeholder {
+  color: var(--mod-text-muted);
+}
+
+.mod-form-input:focus {
+  @apply outline-none;
+  border-color: var(--mod-primary-500);
+  box-shadow: 0 0 0 3px rgba(217, 70, 239, 0.15);
+}
+
+.mod-form-input:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.mod-form-select {
+  @apply appearance-none cursor-pointer;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1.25rem;
+  padding-right: 2.5rem;
+}
+
+.mod-form-textarea {
+  @apply resize-y min-h-24;
+}
+
+.mod-form-checkbox {
+  @apply w-4 h-4 rounded cursor-pointer;
+  accent-color: var(--mod-primary-500);
+}
+
+.mod-form-error {
+  @apply text-xs mt-1;
+  color: #f87171;
+}
+
+/* ============================================================================
+ * ALERT COMPONENTS
+ * ============================================================================ */
+
+.mod-alert {
+  @apply p-4 rounded-lg mb-4;
+  border-left: 4px solid;
+}
+
+.mod-alert-info {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+.mod-alert-success {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+  color: #6ee7b7;
+}
+
+.mod-alert-warning {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: #f59e0b;
+  color: #fcd34d;
+}
+
+.mod-alert-danger {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+
+/* ============================================================================
+ * ROOM CARDS (Live Monitoring)
+ * ============================================================================ */
+
+.mod-room-grid {
+  @apply grid gap-4;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.mod-room-card {
+  @apply p-4 rounded-xl cursor-pointer;
+  background: var(--mod-bg-secondary);
+  border: 1px solid var(--mod-border-subtle);
+  transition: all 0.2s ease;
+}
+
+.mod-room-card:hover {
+  border-color: var(--mod-primary-500);
+  transform: translateY(-2px);
+  box-shadow: var(--mod-shadow-md);
+}
+
+.mod-room-emoji {
+  @apply text-3xl mb-2;
+}
+
+.mod-room-name {
+  @apply font-semibold mb-1;
+  color: var(--mod-text-primary);
+}
+
+.mod-room-meta {
+  @apply text-sm;
+  color: var(--mod-text-muted);
+}
+
+.mod-room-online {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: #34d399;
+}
+
+.mod-room-online::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: #34d399;
+  animation: mod-pulse 2s ease-in-out infinite;
+}
+
+@keyframes mod-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ============================================================================
+ * TOAST NOTIFICATIONS
+ * ============================================================================ */
+
+.mod-toast {
+  @apply fixed bottom-6 right-6 px-5 py-4 rounded-lg z-50;
+  background: var(--mod-bg-elevated);
+  border: 1px solid var(--mod-border-default);
+  box-shadow: var(--mod-shadow-lg);
+  animation: mod-slide-in 0.3s ease;
+}
+
+@keyframes mod-slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.mod-toast-success {
+  border-color: #10b981;
+}
+
+.mod-toast-error {
+  border-color: #ef4444;
+}
+
+.mod-toast-warning {
+  border-color: #f59e0b;
+}
+
+/* ============================================================================
+ * LOADING STATES
+ * ============================================================================ */
+
+.mod-spinner {
+  @apply w-5 h-5 rounded-full;
+  border: 2px solid var(--mod-border-subtle);
+  border-top-color: var(--mod-primary-500);
+  animation: mod-spin 0.8s linear infinite;
+}
+
+@keyframes mod-spin {
+  to { transform: rotate(360deg); }
+}
+
+.mod-skeleton {
+  @apply rounded;
+  background: linear-gradient(
+    90deg,
+    var(--mod-bg-tertiary) 25%,
+    var(--mod-bg-elevated) 50%,
+    var(--mod-bg-tertiary) 75%
+  );
+  background-size: 200% 100%;
+  animation: mod-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes mod-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ============================================================================
+ * RESPONSIVE DESIGN
+ * ============================================================================ */
+
+@media (max-width: 1024px) {
+  .mod-sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .mod-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .mod-main {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .mod-header-inner {
+    @apply px-4;
+  }
+
+  .mod-main {
+    @apply px-4;
+  }
+
+  .mod-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mod-room-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================================
+ * LOGIN/2FA PAGES (Standalone - No sidebar)
+ * ============================================================================ */
+
+.mod-auth-page {
+  @apply min-h-screen flex items-center justify-center p-4;
+  background: linear-gradient(135deg, #0f0f0f 0%, #1a0a1a 50%, #0f0f0f 100%);
+}
+
+.mod-auth-container {
+  @apply w-full max-w-md;
+}
+
+.mod-auth-header {
+  @apply text-center mb-8;
+}
+
+.mod-auth-logo {
+  @apply text-3xl font-bold mb-2;
+  background: var(--mod-gradient-header);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.mod-auth-subtitle {
+  color: var(--mod-text-muted);
+}
+
+.mod-auth-card {
+  background: rgba(23, 23, 23, 0.9);
+  border: 1px solid var(--mod-border-default);
+  border-radius: 1rem;
+  padding: 2rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.mod-auth-form {
+  @apply flex flex-col gap-5;
+}
+
+.mod-auth-btn {
+  @apply w-full py-3 rounded-lg font-semibold;
+  @apply flex items-center justify-center gap-2;
+  background: var(--mod-gradient-primary);
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.mod-auth-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--mod-shadow-glow);
+}
+
+.mod-auth-btn:disabled {
+  @apply opacity-60 cursor-not-allowed;
+  transform: none;
+}
+
+.mod-auth-btn .spinner {
+  @apply w-5 h-5 rounded-full;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  animation: mod-spin 0.8s linear infinite;
+}
+
+.mod-auth-security-note {
+  @apply mt-6 p-4 rounded-lg text-center text-xs;
+  background: rgba(217, 70, 239, 0.05);
+  border: 1px solid var(--mod-border-subtle);
+  color: var(--mod-text-muted);
+}
+
+.mod-auth-security-note strong {
+  color: var(--mod-primary-400);
+}
+
+/* 2FA Code Input Grid */
+.mod-2fa-inputs {
+  @apply flex justify-center gap-2;
+}
+
+.mod-2fa-input {
+  @apply w-12 h-14 text-center text-2xl font-bold rounded-lg;
+  background: var(--mod-bg-tertiary);
+  border: 1px solid var(--mod-border-default);
+  color: var(--mod-text-primary);
+  transition: all 0.2s ease;
+}
+
+.mod-2fa-input:focus {
+  @apply outline-none;
+  border-color: var(--mod-primary-500);
+  box-shadow: 0 0 0 3px rgba(217, 70, 239, 0.15);
+}
+
+.mod-2fa-timer {
+  @apply text-center text-sm mt-4;
+  color: var(--mod-text-muted);
+}
+
+.mod-2fa-timer span {
+  color: var(--mod-text-accent);
+  font-weight: 600;
+}
+
+/* ============================================================================
+ * PRINT STYLES
+ * ============================================================================ */
+
+@media print {
+  .mod-header,
+  .mod-sidebar,
+  .mod-toast {
+    display: none !important;
+  }
+
+  .mod-main {
+    margin: 0;
+    padding: 1rem;
+  }
+
+  .mod-card {
+    break-inside: avoid;
+    border: 1px solid #ccc;
+  }
+}
+
+/* ============================================================================
+ * ACCESSIBILITY
+ * ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .mod-room-online::before,
+  .mod-spinner,
+  .mod-skeleton,
+  .mod-toast {
+    animation: none;
+  }
+
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus visible for keyboard navigation */
+.mod-btn:focus-visible,
+.mod-nav-link:focus-visible,
+.mod-form-input:focus-visible {
+  @apply outline-none ring-2 ring-purple-500 ring-offset-2;
+  ring-offset-color: var(--mod-bg-primary);
+}

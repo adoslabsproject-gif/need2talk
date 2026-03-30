@@ -1,0 +1,43 @@
+/**
+ * DEBUGBAR MINIMAL THEME
+ *
+ * Clean, minimal black and white design.
+ * Low distraction, high clarity for focused debugging.
+ */
+
+.phpdebugbar {
+    background: rgba(0, 0, 0, 0.9) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.phpdebugbar a.phpdebugbar-tab {
+    color: rgba(255, 255, 255, 0.7) !important;
+    transition: all 0.2s ease !important;
+}
+
+.phpdebugbar a.phpdebugbar-tab:hover {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.phpdebugbar a.phpdebugbar-tab.phpdebugbar-active {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.5) !important;
+}
+
+.phpdebugbar-body {
+    background: rgba(0, 0, 0, 0.9) !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.phpdebugbar-widgets-list li {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.phpdebugbar-widgets-list li:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.phpdebugbar-widgets-value {
+    color: #fff !important;
+}

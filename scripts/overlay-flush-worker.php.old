@@ -1,0 +1,446 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Overlay Flush Worker - Enterprise Galaxy V4
+ *
+ * Dedicated worker for flushing write-behind cache (reactions/views) to PostgreSQL.
+ * Implements adaptive frequency based on activity level.
+ *
+ * ADAPTIVE SCHEDULING:
+ * ┌────────────────────────────────────────────────────────────────────┐
+ * │ Activity Level │ Buffer Size │ Flush Interval │ Cron Trigger      │
+ * ├────────────────┼─────────────┼────────────────┼───────────────────┤
+ * │ IDLE           │ 0 items     │ No flush       │ Exit immediately  │
+ * │ LOW            │ 1-49 items  │ 60 seconds     │ Single flush      │
+ * │ NORMAL         │ 50-99 items │ 30 seconds     │ Continuous 2 min  │
+ * │ HIGH           │ 100+ items  │ 10 seconds     │ Continuous 5 min  │
+ * │ PEAK           │ 500+ items  │ 5 seconds      │ Continuous 5 min  │
+ * └────────────────────────────────────────────────────────────────────┘
+ *
+ * CRON INTEGRATION (ogni 5 minuti):
+ * - Cron lancia worker
+ * - Worker determina attività dal buffer size
+ * - IDLE: exit immediato (0 work done)
+ * - LOW: flush singolo, exit
+ * - NORMAL/HIGH/PEAK: loop continuo per max_runtime, poi exit
+ *
+ * ENTERPRISE FEATURES:
+ * - Zero DB connections quando idle
+ * - Adaptive interval basato su carico reale
+ * - Graceful shutdown con signal handlers
+ * - Memory monitoring
+ * - Connection recycling
+ * - Detailed logging per monitoring
+ *
+ * Usage:
+ * php scripts/overlay-flush-worker.php [--max-runtime=120]
+ *
+ * @package Need2Talk\Scripts
+ */
+
+// ENTERPRISE: Long-running process configuration
+set_time_limit(0);
+ini_set('max_execution_time', '0');
+ini_set('memory_limit', '256M');
+ignore_user_abort(true);
+
+date_default_timezone_set('Europe/Rome');
+
+// Ensure CLI only
+if (php_sapi_name() !== 'cli') {
+    exit("This script can only be run from command line\n");
+}
+
+// Bootstrap
+define('APP_ROOT', dirname(__DIR__));
+require_once APP_ROOT . '/app/bootstrap.php';
+
+use Need2Talk\Services\Logger;
+use Need2Talk\Services\Cache\OverlayFlushService;
+use Need2Talk\Services\Cache\WriteBehindBuffer;
+
+/**
+ * Activity levels for adaptive scheduling
+ */
+class ActivityLevel
+{
+    public const IDLE = 'idle';       // 0 items
+    public const LOW = 'low';         // 1-49 items
+    public const NORMAL = 'normal';   // 50-99 items
+    public const HIGH = 'high';       // 100-499 items
+    public const PEAK = 'peak';       // 500+ items
+
+    /**
+     * Get flush interval in seconds for activity level
+     */
+    public static function getFlushInterval(string $level): int
+    {
+        return match ($level) {
+            self::IDLE => 0,      // No flush
+            self::LOW => 60,      // 1 minute
+            self::NORMAL => 30,   // 30 seconds
+            self::HIGH => 10,     // 10 seconds
+            self::PEAK => 5,      // 5 seconds
+            default => 30,
+        };
+    }
+
+    /**
+     * Get max runtime in seconds for activity level
+     */
+    public static function getMaxRuntime(string $level): int
+    {
+        return match ($level) {
+            self::IDLE => 0,      // Exit immediately
+            self::LOW => 5,       // Single flush, exit
+            self::NORMAL => 120,  // 2 minutes continuous
+            self::HIGH => 300,    // 5 minutes continuous
+            self::PEAK => 300,    // 5 minutes continuous
+            default => 120,
+        };
+    }
+
+    /**
+     * Determine activity level from buffer size
+     */
+    public static function fromBufferSize(int $totalItems): string
+    {
+        if ($totalItems === 0) {
+            return self::IDLE;
+        } elseif ($totalItems < 50) {
+            return self::LOW;
+        } elseif ($totalItems < 100) {
+            return self::NORMAL;
+        } elseif ($totalItems < 500) {
+            return self::HIGH;
+        } else {
+            return self::PEAK;
+        }
+    }
+}
+
+/**
+ * Enterprise Overlay Flush Worker
+ */
+class OverlayFlushWorker
+{
+    private bool $running = true;
+    private string $workerId;
+    private float $startTime;
+    private int $flushCount = 0;
+    private int $reactionsTotal = 0;
+    private int $viewsTotal = 0;
+    private int $errorCount = 0;
+
+    // Config
+    private int $maxRuntime;
+    private string $activityLevel = ActivityLevel::IDLE;
+
+    // Services
+    private ?WriteBehindBuffer $buffer = null;
+    private ?OverlayFlushService $flushService = null;
+
+    // Enterprise limits
+    private const MEMORY_THRESHOLD_MB = 128;
+    private const MAX_ERRORS = 10;
+
+    public function __construct(int $maxRuntime = 120)
+    {
+        $this->maxRuntime = $maxRuntime;
+        $this->workerId = 'overlay_flush_' . uniqid() . '_' . getmypid();
+        $this->startTime = microtime(true);
+
+        $this->setupSignalHandlers();
+
+        enterprise_log("[OVERLAY-FLUSH] Worker starting: {$this->workerId}");
+    }
+
+    /**
+     * Initialize services (lazy - only when needed)
+     */
+    private function initializeServices(): bool
+    {
+        try {
+            $this->buffer = WriteBehindBuffer::getInstance();
+            $this->flushService = OverlayFlushService::getInstance();
+
+            if (!$this->buffer || !$this->flushService) {
+                throw new \Exception('Failed to initialize overlay services');
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            enterprise_log("[OVERLAY-FLUSH] ❌ Service initialization failed: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Main entry point
+     */
+    public function run(): int
+    {
+        // Step 1: Initialize services
+        if (!$this->initializeServices()) {
+            return 1; // Exit with error
+        }
+
+        // Step 2: Determine activity level from current buffer
+        // ENTERPRISE V6.10 FIX (2025-12-08): Include plays in activity calculation
+        // Previous bug: plays used gen:dirty:plays (not in getBufferStatus), so worker exited IDLE
+        // when only plays were pending, never flushing them to DB!
+        $bufferStatus = $this->buffer->getBufferStatus();
+
+        // Get plays pending from OverlayService (uses gen:dirty:plays pattern)
+        $playsPending = 0;
+        try {
+            $overlayService = \Need2Talk\Services\Cache\OverlayService::getInstance();
+            if ($overlayService->isAvailable()) {
+                $dirtyPlays = $overlayService->getDirtyPlayFiles(1000);
+                $playsPending = count($dirtyPlays);
+            }
+        } catch (\Exception $e) {
+            // Ignore - plays will be flushed anyway in mainLoop
+        }
+
+        $totalPending = ($bufferStatus['reactions_pending'] ?? 0)
+                      + ($bufferStatus['views_pending'] ?? 0)
+                      + $playsPending;
+        $this->activityLevel = ActivityLevel::fromBufferSize($totalPending);
+
+        enterprise_log("[OVERLAY-FLUSH] 📊 Buffer status: {$totalPending} pending items (plays: {$playsPending}) → Activity: {$this->activityLevel}");
+
+        // Step 3: Handle IDLE - exit immediately (no work needed)
+        if ($this->activityLevel === ActivityLevel::IDLE) {
+            enterprise_log("[OVERLAY-FLUSH] 💤 No pending items, exiting immediately");
+            return 0;
+        }
+
+        // Step 4: Adjust max runtime based on activity level
+        $adaptiveRuntime = ActivityLevel::getMaxRuntime($this->activityLevel);
+        if ($adaptiveRuntime > 0 && $adaptiveRuntime < $this->maxRuntime) {
+            $this->maxRuntime = $adaptiveRuntime;
+        }
+
+        enterprise_log("[OVERLAY-FLUSH] ⚡ Running with max_runtime={$this->maxRuntime}s, flush_interval=" .
+            ActivityLevel::getFlushInterval($this->activityLevel) . "s");
+
+        // Step 5: Enter main flush loop
+        $this->mainLoop();
+
+        // Step 6: Final stats
+        $this->logFinalStats();
+
+        return 0;
+    }
+
+    /**
+     * Main flush loop with adaptive interval
+     */
+    private function mainLoop(): void
+    {
+        while ($this->running && $this->shouldContinue()) {
+            try {
+                // Execute flush
+                $result = $this->flushService->flush();
+
+                if ($result['success']) {
+                    $this->flushCount++;
+                    $this->reactionsTotal += $result['reactions_flushed'];
+                    $this->viewsTotal += $result['plays_flushed'] ?? 0;
+
+                    if ($result['reactions_flushed'] > 0 || ($result['plays_flushed'] ?? 0) > 0) {
+                        enterprise_log("[OVERLAY-FLUSH] ✅ Flush #{$this->flushCount}: " .
+                            "{$result['reactions_flushed']} reactions, " . ($result['plays_flushed'] ?? 0) . " plays " .
+                            "({$result['duration_ms']}ms)");
+                    }
+                } else {
+                    $this->errorCount++;
+                    enterprise_log("[OVERLAY-FLUSH] ⚠️ Flush failed: " . ($result['error'] ?? 'unknown'));
+                }
+
+                // Re-evaluate activity level after each flush
+                $this->updateActivityLevel();
+
+                // Sleep based on current activity level
+                $sleepSeconds = ActivityLevel::getFlushInterval($this->activityLevel);
+                if ($sleepSeconds > 0 && $this->running) {
+                    sleep($sleepSeconds);
+                }
+
+                // For LOW activity, exit after single flush
+                if ($this->activityLevel === ActivityLevel::LOW) {
+                    enterprise_log("[OVERLAY-FLUSH] 📉 Low activity, exiting after single flush");
+                    break;
+                }
+
+                // For IDLE (became idle during loop), exit
+                if ($this->activityLevel === ActivityLevel::IDLE) {
+                    enterprise_log("[OVERLAY-FLUSH] 💤 Buffer empty, exiting");
+                    break;
+                }
+
+            } catch (\Exception $e) {
+                $this->errorCount++;
+                enterprise_log("[OVERLAY-FLUSH] ❌ Error: " . $e->getMessage());
+
+                Logger::overlay('error', 'OVERLAY_FLUSH_WORKER_ERROR', [
+                    'worker_id' => $this->workerId,
+                    'error' => $e->getMessage(),
+                    'error_count' => $this->errorCount,
+                ]);
+
+                // Backoff after error
+                sleep(min($this->errorCount * 5, 30));
+            }
+        }
+    }
+
+    /**
+     * Update activity level based on current buffer
+     */
+    private function updateActivityLevel(): void
+    {
+        if (!$this->buffer) return;
+
+        $bufferStatus = $this->buffer->getBufferStatus();
+
+        // ENTERPRISE V6.10 FIX (2025-12-08): Include plays in activity calculation
+        $playsPending = 0;
+        try {
+            $overlayService = \Need2Talk\Services\Cache\OverlayService::getInstance();
+            if ($overlayService->isAvailable()) {
+                $dirtyPlays = $overlayService->getDirtyPlayFiles(1000);
+                $playsPending = count($dirtyPlays);
+            }
+        } catch (\Exception $e) {
+            // Ignore
+        }
+
+        $totalPending = ($bufferStatus['reactions_pending'] ?? 0)
+                      + ($bufferStatus['views_pending'] ?? 0)
+                      + $playsPending;
+        $newLevel = ActivityLevel::fromBufferSize($totalPending);
+
+        if ($newLevel !== $this->activityLevel) {
+            enterprise_log("[OVERLAY-FLUSH] 📈 Activity changed: {$this->activityLevel} → {$newLevel} ({$totalPending} items, plays: {$playsPending})");
+            $this->activityLevel = $newLevel;
+        }
+    }
+
+    /**
+     * Check if worker should continue running
+     */
+    private function shouldContinue(): bool
+    {
+        // Check runtime
+        $runtime = microtime(true) - $this->startTime;
+        if ($runtime >= $this->maxRuntime) {
+            enterprise_log("[OVERLAY-FLUSH] ⏰ Max runtime reached ({$this->maxRuntime}s)");
+            return false;
+        }
+
+        // Check errors
+        if ($this->errorCount >= self::MAX_ERRORS) {
+            enterprise_log("[OVERLAY-FLUSH] ❌ Max errors reached ({$this->errorCount})");
+            return false;
+        }
+
+        // Check memory
+        $memoryMB = memory_get_usage(true) / 1024 / 1024;
+        if ($memoryMB > self::MEMORY_THRESHOLD_MB) {
+            enterprise_log("[OVERLAY-FLUSH] 💾 Memory threshold exceeded ({$memoryMB}MB)");
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Log final statistics
+     */
+    private function logFinalStats(): void
+    {
+        $runtime = round(microtime(true) - $this->startTime, 2);
+
+        enterprise_log("[OVERLAY-FLUSH] 📊 Final stats: {$this->flushCount} flushes, " .
+            "{$this->reactionsTotal} reactions, {$this->viewsTotal} views, " .
+            "{$this->errorCount} errors, {$runtime}s runtime");
+
+        Logger::overlay('info', 'OVERLAY_FLUSH_WORKER_COMPLETE', [
+            'worker_id' => $this->workerId,
+            'flush_count' => $this->flushCount,
+            'reactions_total' => $this->reactionsTotal,
+            'views_total' => $this->viewsTotal,
+            'error_count' => $this->errorCount,
+            'runtime_seconds' => $runtime,
+            'final_activity_level' => $this->activityLevel,
+        ]);
+    }
+
+    /**
+     * Setup signal handlers for graceful shutdown
+     */
+    private function setupSignalHandlers(): void
+    {
+        if (function_exists('pcntl_signal')) {
+            pcntl_signal(SIGTERM, [$this, 'handleShutdownSignal']);
+            pcntl_signal(SIGINT, [$this, 'handleShutdownSignal']);
+            pcntl_signal(SIGHUP, [$this, 'handleShutdownSignal']);
+        }
+    }
+
+    /**
+     * Handle shutdown signals
+     */
+    public function handleShutdownSignal(int $signal): void
+    {
+        enterprise_log("[OVERLAY-FLUSH] 🛑 Shutdown signal received (signal: {$signal})");
+        $this->running = false;
+    }
+}
+
+/**
+ * Main execution
+ */
+function main(): int
+{
+    $options = getopt('', [
+        'max-runtime:',
+        'help',
+    ]);
+
+    if (isset($options['help'])) {
+        echo "Overlay Flush Worker - Enterprise Galaxy V4\n";
+        echo "============================================\n\n";
+        echo "Dedicated worker for flushing write-behind cache to PostgreSQL.\n";
+        echo "Implements adaptive scheduling based on buffer activity level.\n\n";
+        echo "Usage: php overlay-flush-worker.php [options]\n\n";
+        echo "Options:\n";
+        echo "  --max-runtime=N   Maximum runtime in seconds (default: 120)\n";
+        echo "  --help            Show this help\n\n";
+        echo "Activity Levels:\n";
+        echo "  IDLE   (0 items)    → Exit immediately\n";
+        echo "  LOW    (1-49)       → Single flush, exit\n";
+        echo "  NORMAL (50-99)      → 30s interval, 2 min runtime\n";
+        echo "  HIGH   (100-499)    → 10s interval, 5 min runtime\n";
+        echo "  PEAK   (500+)       → 5s interval, 5 min runtime\n\n";
+        exit(0);
+    }
+
+    $maxRuntime = isset($options['max-runtime']) ? max(10, (int)$options['max-runtime']) : 120;
+
+    try {
+        $worker = new OverlayFlushWorker($maxRuntime);
+        return $worker->run();
+    } catch (\Exception $e) {
+        enterprise_log("[OVERLAY-FLUSH] ❌ Worker failed: " . $e->getMessage());
+        echo "ERROR: " . $e->getMessage() . "\n";
+        return 1;
+    }
+}
+
+exit(main());

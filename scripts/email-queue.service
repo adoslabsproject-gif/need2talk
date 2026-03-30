@@ -1,0 +1,37 @@
+[Unit]
+Description=need2talk Email Queue Worker Manager
+Documentation=https://need2talk.com/docs/email-queue
+After=network.target redis.service mysql.service
+Wants=redis.service mysql.service
+Requires=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/need2talk
+ExecStart=/usr/bin/php /var/www/need2talk/scripts/email-worker-manager.php --workers=4 --monitor-interval=30 --scale-threshold=500
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/www/need2talk/storage
+PrivateTmp=true
+
+# Resource limits for 100k+ concurrent users
+LimitNOFILE=65536
+LimitNPROC=32768
+
+# Environment variables
+Environment=APP_ENV=production
+Environment=PHP_INI_SCAN_DIR=/etc/php/8.1/cli/conf.d:/etc/php/8.1/mods-available
+
+[Install]
+WantedBy=multi-user.target

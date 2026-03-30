@@ -1,0 +1,398 @@
+/**
+ * EMOTION FILTER COMPONENT - need2talk
+ * /public/assets/css/components/emotion-filter.css
+ * Filtro emozioni scalabile per migliaia di utenti
+ */
+
+/* ===== EMOTION FILTER VARIABLES ===== */
+:root {
+    --emotion-filter-bg: rgba(255, 255, 255, 0.05);
+    --emotion-filter-border: rgba(255, 255, 255, 0.1);
+    --emotion-filter-shadow: 0 10px 25px rgba(147, 51, 234, 0.2);
+    --emotion-active: linear-gradient(135deg, #9333ea 0%, #ec4899 100%);
+    --emotion-hover: rgba(147, 51, 234, 0.2);
+    --emotion-transition: all 0.2s ease;
+}
+
+/* ===== FILTER CONTAINER ===== */
+.emotion-filter {
+    background: var(--emotion-filter-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--emotion-filter-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    transition: var(--emotion-transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.emotion-filter:hover {
+    border-color: rgba(147, 51, 234, 0.3);
+    box-shadow: var(--emotion-filter-shadow);
+}
+
+/* ===== FILTER HEADER ===== */
+.emotion-filter-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+}
+
+.emotion-filter-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.emotion-filter-icon {
+    font-size: 1.25rem;
+    background: var(--emotion-active);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.emotion-filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-left: auto;
+}
+
+.emotion-clear-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #9ca3af;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: var(--emotion-transition);
+}
+
+.emotion-clear-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ===== EMOTION GRID ===== */
+.emotion-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    transition: var(--emotion-transition);
+}
+
+.emotion-grid.compact {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.5rem;
+}
+
+/* ===== EMOTION CARD (EmotionRoomSelector.js) ===== */
+.emotion-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    padding: 1rem 0.75rem;
+    cursor: pointer;
+    transition: var(--emotion-transition);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.emotion-card:hover {
+    background: var(--emotion-hover);
+    border-color: rgba(147, 51, 234, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(147, 51, 234, 0.2);
+}
+
+.emotion-card.selected {
+    background: var(--emotion-active);
+    border-color: transparent;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(147, 51, 234, 0.4);
+}
+
+.emotion-card .emoji {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.emotion-card .name {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.emotion-card.selected .name {
+    color: white;
+}
+
+.emotion-card .count {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.625rem;
+    color: #6b7280;
+}
+
+.emotion-card.selected .count {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.emotion-card .count .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #6b7280;
+}
+
+.emotion-card .count .dot.active {
+    background: #22c55e;
+    box-shadow: 0 0 6px #22c55e;
+}
+
+.emotion-card.selected .count .dot.active {
+    background: #ffffff;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
+}
+
+/* ===== EMOTION ITEM ===== */
+.emotion-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    padding: 1rem 0.75rem;
+    cursor: pointer;
+    transition: var(--emotion-transition);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+}
+
+.emotion-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.4s ease;
+}
+
+.emotion-item:hover {
+    background: var(--emotion-hover);
+    border-color: rgba(147, 51, 234, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(147, 51, 234, 0.2);
+}
+
+.emotion-item:hover::before {
+    left: 100%;
+}
+
+.emotion-item.active {
+    background: var(--emotion-active);
+    border-color: transparent;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(147, 51, 234, 0.4);
+}
+
+.emotion-item.active .emotion-emoji,
+.emotion-item.active .emotion-label,
+.emotion-item.active .emotion-count {
+    color: white;
+}
+
+/* ===== EMOTION CONTENT ===== */
+.emotion-emoji {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    display: block;
+    transition: var(--emotion-transition);
+}
+
+.emotion-item:hover .emotion-emoji {
+    transform: scale(1.1);
+}
+
+.emotion-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 0.25rem 0;
+    text-transform: capitalize;
+}
+
+.emotion-count {
+    font-size: 0.6875rem;
+    color: #6b7280;
+    margin: 0;
+    font-weight: 500;
+}
+
+.emotion-item.active .emotion-count {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* ===== QUICK FILTERS ===== */
+.emotion-quick-filters {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.emotion-quick-filter {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #9ca3af;
+    padding: 0.375rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: var(--emotion-transition);
+    white-space: nowrap;
+}
+
+.emotion-quick-filter:hover {
+    background: var(--emotion-hover);
+    border-color: rgba(147, 51, 234, 0.3);
+    color: #ffffff;
+}
+
+.emotion-quick-filter.active {
+    background: var(--emotion-active);
+    border-color: transparent;
+    color: white;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+    .emotion-filter {
+        padding: 1rem;
+    }
+    
+    .emotion-filter-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .emotion-filter-controls {
+        margin-left: 0;
+        justify-content: space-between;
+    }
+    
+    .emotion-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 0.5rem;
+    }
+    
+    .emotion-grid.compact {
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    }
+    
+    .emotion-quick-filters {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .emotion-filter {
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    
+    .emotion-grid {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 0.375rem;
+    }
+    
+    .emotion-item {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    .emotion-emoji {
+        font-size: 1.25rem;
+        margin-bottom: 0.375rem;
+    }
+    
+    .emotion-label {
+        font-size: 0.6875rem;
+    }
+    
+    .emotion-count {
+        font-size: 0.625rem;
+    }
+    
+    .emotion-quick-filters {
+        gap: 0.375rem;
+    }
+    
+    .emotion-quick-filter {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.6875rem;
+    }
+}
+
+/* ===== ACCESSIBILITY ===== */
+.emotion-item:focus-visible,
+.emotion-clear-btn:focus-visible,
+.emotion-quick-filter:focus-visible {
+    outline: 2px solid #9333ea;
+    outline-offset: 2px;
+}
+
+/* ===== PERFORMANCE OPTIMIZATIONS ===== */
+.emotion-filter {
+    contain: layout style;
+}
+
+.emotion-item {
+    backface-visibility: hidden;
+}
+
+.emotion-grid {
+    contain: layout;
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+    .emotion-filter,
+    .emotion-item,
+    .emotion-emoji,
+    .emotion-clear-btn,
+    .emotion-quick-filter {
+        transition: none;
+        animation: none;
+    }
+    
+    .emotion-item:hover,
+    .emotion-item:hover .emotion-emoji {
+        transform: none;
+    }
+    
+    .emotion-item::before {
+        display: none;
+    }
+}

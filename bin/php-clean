@@ -1,0 +1,7 @@
+#!/bin/bash
+# 🚀 NEED2TALK - Clean PHP wrapper without Xdebug (Linux)
+# Uses system PHP with Xdebug disabled via environment
+
+# Use system PHP with Xdebug disabled
+export XDEBUG_MODE=off
+exec /usr/bin/php -d xdebug.mode=off "$@"

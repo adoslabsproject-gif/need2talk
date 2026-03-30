@@ -1,0 +1,406 @@
+<?php
+/**
+ * WebSocket Publisher Service - Enterprise Galaxy
+ *
+ * Publish real-time events to WebSocket clients via Redis PubSub
+ * Used throughout application to send notifications, cache invalidation signals, feed updates
+ *
+ * ARCHITECTURE:
+ * - Static utility class (no instance needed)
+ * - Redis list-based queue (RPUSH + BLPOP)
+ * - Graceful degradation (if Redis fails, app continues)
+ * - Channel-based targeting (user:uuid, global, feed:followers:uuid)
+ * - PSR-3 logging integration
+ *
+ * USAGE EXAMPLES:
+ *
+ * // Send friend request notification to specific user
+ * WebSocketPublisher::publishToUser($receiverUuid, 'friend_request_received', [
+ *     'friendship_id' => 123,
+ *     'from_user' => ['uuid' => $senderUuid, 'nickname' => $nickname, 'avatar_url' => $avatar]
+ * ]);
+ *
+ * // Broadcast global announcement
+ * WebSocketPublisher::publishGlobal('maintenance_mode', [
+ *     'message' => 'Server maintenance in 10 minutes',
+ *     'countdown' => 600
+ * ]);
+ *
+ * // Notify followers of new audiopost
+ * WebSocketPublisher::publishToFollowers($authorUuid, 'new_audiopost', [
+ *     'post_id' => 456,
+ *     'author' => ['uuid' => $authorUuid, 'nickname' => $nickname]
+ * ]);
+ *
+ * PERFORMANCE:
+ * - Redis RPUSH is O(1) = ~0.1ms latency
+ * - Non-blocking (returns immediately)
+ * - Timeout: 100ms max (fail fast if Redis down)
+ *
+ * SECURITY:
+ * - Data validation (JSON encoding test)
+ * - Payload size check (max 64KB recommended)
+ * - No sensitive data in payload (use IDs, client fetches details)
+ *
+ * ERROR HANDLING:
+ * - Graceful degradation: If Redis fails, log error + return false
+ * - Application continues normally (WebSocket is "nice to have")
+ * - PSR-3 logging for monitoring/debugging
+ *
+ * @package Need2Talk\Services
+ * @author  need2talk Enterprise Team
+ * @version 1.0.0
+ */
+
+namespace Need2Talk\Services;
+
+use Need2Talk\Core\RedisConnectionPool;
+
+class WebSocketPublisher
+{
+    /**
+     * Maximum payload size (64KB)
+     * RATIONALE: WebSocket messages should be small for performance
+     * Large data = client should fetch via HTTP API
+     *
+     * @var int
+     */
+    private const MAX_PAYLOAD_SIZE = 65536; // 64KB
+
+    /**
+     * Redis connection timeout (milliseconds)
+     * RATIONALE: Fail fast if Redis is down (don't block application)
+     *
+     * @var float
+     */
+    private const REDIS_TIMEOUT = 0.1; // 100ms
+
+    /**
+     * Publish event to WebSocket clients via Redis queue
+     *
+     * Message format:
+     * {
+     *   "channel": "user:uuid" | "global" | "feed:followers:uuid",
+     *   "event": "friend_request_received" | "new_audiopost" | ...,
+     *   "data": {...},
+     *   "timestamp": 1234567890.123
+     * }
+     *
+     * PERFORMANCE: O(1) Redis RPUSH, ~0.1ms latency
+     * ERROR HANDLING: Returns false if Redis fails (graceful degradation)
+     *
+     * @param string $channel Target channel (user:uuid, global, feed:followers:uuid)
+     * @param string $event Event name (friend_request_received, new_audiopost, etc)
+     * @param array $data Event payload (should be SMALL, <10KB recommended)
+     * @return bool Success status (false if Redis failed, true otherwise)
+     */
+    public static function publish(string $channel, string $event, array $data = []): bool
+    {
+        try {
+            // ENTERPRISE: Validate inputs
+            if (empty($channel) || empty($event)) {
+                Logger::websocket('warning', 'Invalid publish parameters', [
+                    'channel' => $channel,
+                    'event' => $event
+                ]);
+                return false;
+            }
+
+            // ENTERPRISE: Build message payload
+            $message = [
+                'channel' => $channel,
+                'event' => $event,
+                'data' => $data,
+                'timestamp' => microtime(true)
+            ];
+
+            // ENTERPRISE: Validate JSON encoding (fail early if data is invalid)
+            $messageJson = json_encode($message, JSON_THROW_ON_ERROR);
+
+            // ENTERPRISE: Check payload size (prevent memory issues)
+            $payloadSize = strlen($messageJson);
+            if ($payloadSize > self::MAX_PAYLOAD_SIZE) {
+                Logger::websocket('warning', 'Payload too large', [
+                    'channel' => $channel,
+                    'event' => $event,
+                    'size_bytes' => $payloadSize,
+                    'max_size_bytes' => self::MAX_PAYLOAD_SIZE
+                ]);
+                return false;
+            }
+
+            // ENTERPRISE: Get Redis connection from pool (with timeout)
+            $redis = RedisConnectionPool::getConnection();
+
+            // ENTERPRISE: Set short timeout (fail fast if Redis is down)
+            $redis->setOption(\Redis::OPT_READ_TIMEOUT, self::REDIS_TIMEOUT);
+
+            // ENTERPRISE: Push message to Redis list (WebSocket server uses BLPOP)
+            // RATIONALE: List-based queue is more reliable than PubSub channels
+            // (no missed messages if WebSocket server temporarily disconnects)
+            $result = $redis->rPush('websocket:events', $messageJson);
+
+            if ($result === false) {
+                throw new \Exception('Redis RPUSH failed');
+            }
+
+            // ENTERPRISE: Log successful publish (debug level, low verbosity)
+            Logger::websocket('debug', 'Event published', [
+                'channel' => $channel,
+                'event' => $event,
+                'payload_size' => $payloadSize,
+                'queue_length' => $result // RPUSH returns new list length
+            ]);
+
+            return true;
+
+        } catch (\JsonException $e) {
+            // CRITICAL: JSON encoding failed (invalid data structure)
+            Logger::websocket('error', 'JSON encoding failed', [
+                'channel' => $channel,
+                'event' => $event,
+                'error' => $e->getMessage(),
+                'data_keys' => array_keys($data)
+            ]);
+            return false;
+
+        } catch (\RedisException $e) {
+            // WARNING: Redis connection/operation failed (graceful degradation)
+            Logger::websocket('warning', 'Redis operation failed', [
+                'channel' => $channel,
+                'event' => $event,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+
+        } catch (\Exception $e) {
+            // ERROR: Unexpected error (should not happen, but handle gracefully)
+            Logger::websocket('error', 'Unexpected error', [
+                'channel' => $channel,
+                'event' => $event,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Publish event to specific user (by UUID)
+     *
+     * USAGE:
+     * WebSocketPublisher::publishToUser($userUuid, 'friend_request_received', [
+     *     'friendship_id' => 123,
+     *     'from_user' => ['uuid' => '...', 'nickname' => 'John']
+     * ]);
+     *
+     * CHANNEL: "user:{$userUuid}"
+     * DELIVERY: All connections of this user (multiple tabs/devices supported)
+     *
+     * @param string $userUuid Target user UUID (36 chars)
+     * @param string $event Event name
+     * @param array $data Event payload
+     * @return bool Success status
+     */
+    public static function publishToUser(string $userUuid, string $event, array $data = []): bool
+    {
+        // ENTERPRISE: Validate UUID format (basic check)
+        if (strlen($userUuid) !== 36) {
+            Logger::websocket('warning', 'Invalid user UUID format', [
+                'user_uuid' => $userUuid,
+                'length' => strlen($userUuid)
+            ]);
+            return false;
+        }
+
+        return self::publish("user:{$userUuid}", $event, $data);
+    }
+
+    /**
+     * Publish global broadcast (to ALL connected users)
+     *
+     * USAGE:
+     * WebSocketPublisher::publishGlobal('maintenance_mode', [
+     *     'message' => 'Server maintenance starting',
+     *     'countdown' => 600
+     * ]);
+     *
+     * CHANNEL: "global"
+     * DELIVERY: Broadcast to ALL connected WebSocket clients
+     *
+     * USE CASES:
+     * - Maintenance announcements
+     * - System-wide notifications
+     * - Emergency alerts
+     *
+     * WARNING: Use sparingly! Broadcasting to 100k users = high load
+     *
+     * @param string $event Event name
+     * @param array $data Event payload
+     * @return bool Success status
+     */
+    public static function publishGlobal(string $event, array $data = []): bool
+    {
+        // ENTERPRISE: Log global broadcast (important for auditing)
+        Logger::websocket('info', 'Global broadcast', [
+            'event' => $event,
+            'data' => $data
+        ]);
+
+        return self::publish('global', $event, $data);
+    }
+
+    /**
+     * Publish event to all followers of a user
+     *
+     * USAGE:
+     * WebSocketPublisher::publishToFollowers($authorUuid, 'new_audiopost', [
+     *     'post_id' => 456,
+     *     'author' => ['uuid' => '...', 'nickname' => 'John']
+     * ]);
+     *
+     * CHANNEL: "feed:followers:{$authorUuid}"
+     * DELIVERY: All followers of author (WebSocket server queries followers)
+     *
+     * USE CASES:
+     * - New audiopost published
+     * - Profile picture updated
+     * - Status message changed
+     *
+     * TODO: WebSocketHandler must implement followers query
+     *
+     * @param string $authorUuid Author user UUID
+     * @param string $event Event name
+     * @param array $data Event payload
+     * @return bool Success status
+     */
+    public static function publishToFollowers(string $authorUuid, string $event, array $data = []): bool
+    {
+        // ENTERPRISE: Validate UUID format
+        if (strlen($authorUuid) !== 36) {
+            Logger::websocket('warning', 'Invalid author UUID format', [
+                'author_uuid' => $authorUuid,
+                'length' => strlen($authorUuid)
+            ]);
+            return false;
+        }
+
+        return self::publish("feed:followers:{$authorUuid}", $event, $data);
+    }
+
+    /**
+     * Publish cache invalidation signal
+     *
+     * USAGE:
+     * WebSocketPublisher::publishCacheInvalidation($userUuid, [
+     *     'invalidate' => ['pending_requests', 'friend_badge']
+     * ]);
+     *
+     * CLIENT SIDE:
+     * - Client receives event
+     * - Invalidates local cache (localStorage, memory)
+     * - Re-fetches data if needed (only if page is active)
+     *
+     * PERFORMANCE:
+     * - Signal-only approach (no data sent)
+     * - Client decides when to fetch
+     * - Avoids unnecessary database queries
+     *
+     * @param string $userUuid Target user UUID
+     * @param array $cacheKeys Cache keys to invalidate
+     * @return bool Success status
+     */
+    public static function publishCacheInvalidation(string $userUuid, array $cacheKeys): bool
+    {
+        return self::publishToUser($userUuid, 'cache_invalidation', [
+            'invalidate' => $cacheKeys,
+            'timestamp' => microtime(true)
+        ]);
+    }
+
+    /**
+     * Publish badge count update
+     *
+     * USAGE:
+     * WebSocketPublisher::publishBadgeUpdate($userUuid, [
+     *     'pending_requests' => 5,
+     *     'notifications' => 12,
+     *     'messages' => 3
+     * ]);
+     *
+     * CLIENT SIDE:
+     * - Updates badge counts in UI (NO fetch needed!)
+     * - Real-time badge sync across tabs/devices
+     *
+     * PERFORMANCE:
+     * - Eliminates polling for badge counts
+     * - Server calculates counts once, pushes to all devices
+     * - Zero database queries on client side
+     *
+     * @param string $userUuid Target user UUID
+     * @param array $badges Badge name → count mapping
+     * @return bool Success status
+     */
+    public static function publishBadgeUpdate(string $userUuid, array $badges): bool
+    {
+        return self::publishToUser($userUuid, 'badge_update', [
+            'badges' => $badges,
+            'timestamp' => microtime(true)
+        ]);
+    }
+
+    /**
+     * Get current queue length (for monitoring)
+     *
+     * Returns number of pending events in Redis queue
+     * Useful for monitoring WebSocket server health
+     *
+     * @return int Queue length (0 if Redis fails)
+     */
+    public static function getQueueLength(): int
+    {
+        try {
+            $redis = RedisConnectionPool::getConnection();
+            $redis->setOption(\Redis::OPT_READ_TIMEOUT, self::REDIS_TIMEOUT);
+
+            $length = $redis->lLen('websocket:events');
+            return $length !== false ? $length : 0;
+
+        } catch (\Exception $e) {
+            Logger::websocket('warning', 'Failed to get queue length', [
+                'error' => $e->getMessage()
+            ]);
+            return 0;
+        }
+    }
+
+    /**
+     * Clear event queue (for testing/maintenance)
+     *
+     * WARNING: Deletes all pending events!
+     * Use only for testing or emergency cleanup
+     *
+     * @return bool Success status
+     */
+    public static function clearQueue(): bool
+    {
+        try {
+            $redis = RedisConnectionPool::getConnection();
+            $redis->setOption(\Redis::OPT_READ_TIMEOUT, self::REDIS_TIMEOUT);
+
+            $result = $redis->del('websocket:events');
+
+            Logger::websocket('warning', 'Event queue cleared', [
+                'keys_deleted' => $result
+            ]);
+
+            return $result !== false;
+
+        } catch (\Exception $e) {
+            Logger::websocket('error', 'Failed to clear queue', [
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+}

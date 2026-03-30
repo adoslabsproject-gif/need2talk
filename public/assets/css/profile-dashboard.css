@@ -1,0 +1,2618 @@
+/**
+ * ================================================================================
+ * PROFILE DASHBOARD - PSYCHOLOGICAL "MIRROR OF THE SOUL" STYLING
+ * ================================================================================
+ *
+ * DESIGN PHILOSOPHY:
+ * - Compassionate (soft colors, gentle transitions)
+ * - Non-judgmental (validate ALL emotions equally)
+ * - Supportive (visual hierarchy guides understanding)
+ * - Accessible (WCAG 2.1 AAA compliant)
+ *
+ * COLOR PSYCHOLOGY:
+ * - Positive emotions: Warm tones (gold, green, pink)
+ * - Negative emotions: Soft cool tones (NOT aggressive reds)
+ * - Neutral: Gentle grays
+ * - Support: Soft blues (calming, trustworthy)
+ *
+ * @version 1.0.0 - Enterprise Galaxy
+ * @author need2talk.it - AI-Orchestrated Development
+ * ================================================================================
+ */
+
+/* ============================================================================
+   NAVBAR FIX - Bootstrap CSS override (Enterprise Galaxy)
+   ============================================================================ */
+/* Bootstrap CSS adds text-decoration to links - reset for navbar only */
+header a,
+header nav a {
+    text-decoration: none !important;
+}
+
+/* ============================================================================
+   CONTAINER & LAYOUT - DARK THEME (Enterprise Galaxy)
+   ============================================================================ */
+
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.dashboard-section {
+    /* GLASSMORPHISM - Same as site theme */
+    background: rgba(31, 41, 55, 0.5); /* bg-gray-800/50 */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(107, 114, 128, 0.5); /* border-gray-700/50 */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
+}
+
+.dashboard-section:hover {
+    box-shadow: 0 8px 32px rgba(139, 92, 246, 0.2); /* purple glow */
+    transform: translateY(-2px);
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+.dashboard-section h3 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #F9FAFB; /* text-gray-50 - White for dark theme */
+}
+
+.dashboard-charts-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* ============================================================================
+   LOADING STATE - DARK THEME
+   ============================================================================ */
+
+.dashboard-loading {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: rgba(31, 41, 55, 0.5); /* bg-gray-800/50 */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(75, 85, 99, 0.3); /* border-gray-600/30 */
+    border-top-color: #8B5CF6; /* purple accent */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.dashboard-loading p {
+    color: #D1D5DB; /* text-gray-300 - Light gray for dark theme */
+    font-size: 1.125rem;
+}
+
+/* ============================================================================
+   EMPTY STATE - DARK THEME
+   ============================================================================ */
+
+.dashboard-empty {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.7) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    animation: gentle-pulse 2s ease-in-out infinite;
+}
+
+@keyframes gentle-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.9; }
+}
+
+.dashboard-empty h2 {
+    margin: 0 0 1rem;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #F9FAFB; /* text-gray-50 - White for dark theme */
+}
+
+.empty-message {
+    font-size: 1.25rem;
+    color: #D1D5DB; /* text-gray-300 - Light gray for readability */
+    margin-bottom: 0.5rem;
+}
+
+.empty-subtitle {
+    font-size: 1rem;
+    color: #9CA3AF; /* text-gray-400 - Muted light gray */
+    margin-bottom: 2rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.btn-start-recording {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.btn-start-recording:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+}
+
+.btn-start-recording .icon {
+    font-size: 1.5rem;
+}
+
+/* ============================================================================
+   HEALTH SCORE CARD
+   ============================================================================ */
+
+.health-score-card {
+    /* DARK THEME - Glassmorphism card */
+    background: rgba(17, 24, 39, 0.6); /* bg-gray-900/60 */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 16px;
+    padding: 2rem;
+    border: 1px solid rgba(75, 85, 99, 0.3); /* border-gray-600/30 */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.score-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.score-header h2 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #F9FAFB; /* text-gray-50 - White for dark theme */
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.score-icon {
+    font-size: 2rem;
+}
+
+.score-value {
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    /* Color set dynamically by JavaScript based on score */
+}
+
+.score-message {
+    font-size: 1.125rem;
+    color: #D1D5DB; /* text-gray-300 - Light gray for readability */
+    margin-bottom: 2rem;
+    line-height: 1.6;
+}
+
+/* Score Breakdown */
+.score-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.breakdown-item {
+    display: grid;
+    grid-template-columns: 150px 1fr 60px;
+    gap: 1rem;
+    align-items: center;
+}
+
+.breakdown-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #E5E7EB; /* text-gray-200 - Light text for dark theme */
+}
+
+.breakdown-bar {
+    height: 12px;
+    background: rgba(75, 85, 99, 0.3); /* bg-gray-600/30 - Dark bar background */
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+}
+
+.breakdown-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Color set dynamically by JavaScript */
+}
+
+.breakdown-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #D1D5DB; /* text-gray-300 - Light gray for readability */
+    text-align: right;
+}
+
+/* ============================================================================
+   CRISIS RESOURCES (COMPASSIONATE SUPPORT) - DARK THEME
+   ============================================================================ */
+
+.crisis-resources {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.2) 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 12px;
+    border-left: 4px solid #3B82F6;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.crisis-resources h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #93C5FD; /* text-blue-300 - Light blue for dark theme */
+}
+
+.crisis-resources > p {
+    margin: 0 0 1rem;
+    font-size: 0.9375rem;
+    color: #BFDBFE; /* text-blue-200 - Lighter blue for readability */
+}
+
+.resources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.resource-item {
+    background: rgba(17, 24, 39, 0.6); /* bg-gray-900/60 - Dark glassmorphism */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.resource-item strong {
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #93C5FD; /* text-blue-300 - Light blue for dark theme */
+    margin-bottom: 0.5rem;
+}
+
+.resource-phone,
+.resource-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: #60A5FA; /* text-blue-400 - Bright blue link */
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.resource-phone:hover,
+.resource-link:hover {
+    color: #93C5FD; /* text-blue-300 - Lighter on hover */
+    text-decoration: underline;
+}
+
+.resource-hours {
+    margin-left: 1rem;
+    font-size: 0.875rem;
+    color: #9CA3AF; /* text-gray-400 - Muted light gray */
+}
+
+.resource-desc {
+    margin: 0.5rem 0 0;
+    font-size: 0.875rem;
+    color: #D1D5DB; /* text-gray-300 - Light gray for readability */
+}
+
+/* ============================================================================
+   INSIGHTS SECTION - DARK THEME
+   ============================================================================ */
+
+.insights-container h3 {
+    margin-bottom: 1.5rem;
+}
+
+.insights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.insight-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.insight-positive {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.2) 100%);
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.insight-neutral {
+    background: linear-gradient(135deg, rgba(75, 85, 99, 0.15) 0%, rgba(55, 65, 81, 0.2) 100%);
+    border-color: rgba(156, 163, 175, 0.4);
+}
+
+.insight-support {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.2) 100%);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.insight-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+
+.insight-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.insight-content h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #F9FAFB; /* text-gray-50 - White for dark theme */
+}
+
+.insight-content p {
+    margin: 0;
+    font-size: 0.9375rem;
+    color: #D1D5DB; /* text-gray-300 - Light gray for readability */
+    line-height: 1.5;
+}
+
+/* ============================================================================
+   EMOTION WHEEL - DARK THEME
+   ============================================================================ */
+
+.emotion-wheel-container h3 {
+    text-align: center;
+}
+
+.emotion-wheel-placeholder {
+    max-width: 400px;
+    margin: 0 auto 2rem;
+    padding: 2rem;
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.4) 0%, rgba(17, 24, 39, 0.5) 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.emotion-wheel-placeholder canvas {
+    max-width: 100%;
+    height: auto;
+}
+
+.emotion-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.emotion-item {
+    padding: 1rem;
+    background: rgba(31, 41, 55, 0.4); /* bg-gray-800/40 - Dark glassmorphism */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border-radius: 8px;
+    border: 1px solid rgba(75, 85, 99, 0.2);
+    transition: all 0.2s ease;
+}
+
+.emotion-item:hover {
+    background: rgba(31, 41, 55, 0.6);
+    border-color: rgba(139, 92, 246, 0.4);
+    transform: translateX(4px);
+}
+
+.emotion-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.emotion-icon {
+    font-size: 1.5rem;
+}
+
+.emotion-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #F9FAFB; /* text-gray-50 - White for dark theme */
+}
+
+.emotion-bar {
+    height: 8px;
+    background: rgba(75, 85, 99, 0.3); /* bg-gray-600/30 - Dark bar background */
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.emotion-fill {
+    height: 100%;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 4px;
+    /* Color set dynamically by JavaScript */
+}
+
+.emotion-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    color: #9CA3AF; /* text-gray-400 - Muted light gray */
+}
+
+.emotion-count {
+    font-weight: 600;
+    color: #D1D5DB; /* text-gray-300 - Slightly brighter */
+}
+
+.emotion-percentage {
+    font-weight: 700;
+    color: #E5E7EB; /* text-gray-200 - Brighter for emphasis */
+}
+
+/* ============================================================================
+   MOOD TIMELINE - DARK THEME
+   ============================================================================ */
+
+.mood-timeline-container h3 {
+    text-align: center;
+}
+
+.timeline-trend {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding: 0.75rem;
+    background: rgba(31, 41, 55, 0.4); /* bg-gray-800/40 - Dark glassmorphism */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border-radius: 8px;
+    border: 1px solid rgba(75, 85, 99, 0.2);
+}
+
+.trend-icon {
+    font-size: 1.5rem;
+    margin-right: 0.5rem;
+}
+
+.trend-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #E5E7EB; /* text-gray-200 - Light text for dark theme */
+}
+
+.timeline-chart-wrapper {
+    position: relative;
+    height: 300px;
+    background: rgba(17, 24, 39, 0.5); /* bg-gray-900/50 - Dark chart background */
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 12px;
+    padding: 1rem;
+    border: 1px solid rgba(75, 85, 99, 0.2);
+}
+
+.timeline-chart-wrapper canvas {
+    max-width: 100%;
+    height: 100% !important;
+}
+
+/* ============================================================================
+   STATS CARDS - DARK THEME
+   ============================================================================ */
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.stat-card {
+    text-align: center;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.5) 0%, rgba(17, 24, 39, 0.6) 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 12px;
+    border: 2px solid rgba(75, 85, 99, 0.3);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    border-color: #8B5CF6;
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #F9FAFB; /* text-gray-50 - White for dark theme */
+    margin-bottom: 0.25rem;
+    letter-spacing: -1px;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #9CA3AF; /* text-gray-400 - Muted light gray */
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ============================================================================
+   ERROR STATE - DARK THEME
+   ============================================================================ */
+
+.dashboard-error {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.15) 0%, rgba(185, 28, 28, 0.2) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    border: 2px solid rgba(220, 38, 38, 0.3);
+}
+
+.error-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.dashboard-error h2 {
+    margin: 0 0 1rem;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #FCA5A5; /* text-red-300 - Light red for dark theme */
+}
+
+.error-message {
+    font-size: 1rem;
+    color: #FECACA; /* text-red-200 - Lighter red for readability */
+    margin-bottom: 2rem;
+}
+
+.btn-retry {
+    padding: 0.75rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.btn-retry:hover {
+    background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+}
+
+/* ============================================================================
+   UTILITY CLASSES - DARK THEME
+   ============================================================================ */
+
+.text-muted {
+    color: #9CA3AF; /* text-gray-400 - Muted light gray (already correct for dark) */
+    font-size: 0.9375rem;
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 0.75rem 0;
+    }
+
+    .dashboard-section {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 12px;
+        border: none;
+        box-shadow: none;
+        background: rgba(31, 41, 55, 0.3);
+    }
+
+    .dashboard-section:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+    .dashboard-charts-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .breakdown-item {
+        grid-template-columns: 100px 1fr 45px;
+        gap: 0.5rem;
+    }
+
+    .breakdown-label {
+        font-size: 0.75rem;
+    }
+
+    .insights-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .insight-card {
+        padding: 1rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .score-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .score-value {
+        font-size: 2.25rem;
+    }
+
+    .health-score-card {
+        padding: 1rem;
+        border-radius: 12px;
+    }
+
+    .score-message {
+        font-size: 1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    /* Emotion wheel mobile optimization */
+    .emotion-wheel-placeholder {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .emotion-list {
+        gap: 0.5rem;
+    }
+
+    .emotion-item {
+        padding: 0.75rem;
+    }
+
+    /* Timeline chart mobile */
+    .timeline-chart-wrapper {
+        height: 200px;
+        padding: 0.75rem;
+    }
+
+    .mood-timeline-container h3,
+    .emotion-wheel-container h3 {
+        font-size: 1.125rem;
+        margin-bottom: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .dashboard-container {
+        padding: 0.5rem 0;
+    }
+
+    .dashboard-section {
+        padding: 0.875rem;
+        margin-bottom: 0.75rem;
+        border-radius: 10px;
+    }
+
+    .dashboard-section h3 {
+        font-size: 1.125rem;
+        margin-bottom: 1rem;
+    }
+
+    .dashboard-empty {
+        padding: 2rem 1rem;
+    }
+
+    .dashboard-empty h2 {
+        font-size: 1.25rem;
+    }
+
+    .empty-message {
+        font-size: 0.9375rem;
+    }
+
+    .empty-subtitle {
+        font-size: 0.875rem;
+    }
+
+    .btn-start-recording {
+        padding: 0.875rem 1.5rem;
+        font-size: 1rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+
+    .stat-card {
+        padding: 0.875rem;
+        border-radius: 10px;
+    }
+
+    .stat-icon {
+        font-size: 1.75rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.6875rem;
+    }
+
+    /* Health score mobile compact */
+    .health-score-card {
+        padding: 0.875rem;
+    }
+
+    .score-header h2 {
+        font-size: 1.25rem;
+    }
+
+    .score-icon {
+        font-size: 1.5rem;
+    }
+
+    .score-value {
+        font-size: 2rem;
+    }
+
+    .score-message {
+        font-size: 0.9375rem;
+        margin-bottom: 1rem;
+    }
+
+    .breakdown-item {
+        grid-template-columns: 90px 1fr 40px;
+        gap: 0.375rem;
+        margin-bottom: 0.375rem;
+    }
+
+    .breakdown-label {
+        font-size: 0.6875rem;
+    }
+
+    .breakdown-bar {
+        height: 8px;
+    }
+
+    .breakdown-value {
+        font-size: 0.75rem;
+    }
+
+    .breakdown-explanation {
+        font-size: 0.6875rem;
+        margin-top: -0.375rem;
+    }
+
+    /* Insights mobile compact */
+    .insight-card {
+        padding: 0.875rem;
+        gap: 0.75rem;
+    }
+
+    .insight-icon {
+        font-size: 1.5rem;
+    }
+
+    .insight-content h4 {
+        font-size: 0.9375rem;
+    }
+
+    .insight-content p {
+        font-size: 0.8125rem;
+    }
+
+    /* Emotion wheel mobile compact */
+    .emotion-wheel-placeholder {
+        padding: 0.75rem;
+        max-width: 280px;
+    }
+
+    .emotion-item {
+        padding: 0.625rem;
+    }
+
+    .emotion-icon {
+        font-size: 1.25rem;
+    }
+
+    .emotion-name {
+        font-size: 0.875rem;
+    }
+
+    .emotion-bar {
+        height: 6px;
+    }
+
+    .emotion-stats {
+        font-size: 0.75rem;
+    }
+
+    /* Timeline mobile compact */
+    .timeline-chart-wrapper {
+        height: 180px;
+        padding: 0.5rem;
+    }
+
+    .timeline-trend {
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .trend-icon {
+        font-size: 1.25rem;
+    }
+
+    .trend-label {
+        font-size: 0.875rem;
+    }
+
+    /* Calculation explanation mobile */
+    .calculation-explanation summary,
+    .insights-methodology summary {
+        padding: 0.75rem;
+        font-size: 0.8125rem;
+    }
+
+    .explanation-content,
+    .methodology-content {
+        padding: 0.875rem;
+    }
+
+    .metric-explanation {
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .metric-explanation h4 {
+        font-size: 0.9375rem;
+    }
+
+    .metric-explanation p {
+        font-size: 0.8125rem;
+    }
+
+    .disclaimer {
+        padding: 0.75rem;
+        font-size: 0.8125rem;
+    }
+}
+
+/* ============================================================================
+   EMOTIONAL ANALYTICS - EMOTION WHEEL CHART MOBILE FIX
+   ============================================================================ */
+
+/* Container for polar area chart */
+.ea-wheel-container {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ea-wheel-container canvas {
+    max-width: 100% !important;
+    max-height: 100% !important;
+}
+
+@media (max-width: 768px) {
+    .ea-wheel-container {
+        height: 220px !important;
+        max-height: 220px !important;
+    }
+
+    #ea-emotion-wheel-chart {
+        max-height: 220px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .ea-wheel-container {
+        height: 180px !important;
+        max-height: 180px !important;
+    }
+
+    #ea-emotion-wheel-chart {
+        max-height: 180px !important;
+    }
+}
+
+/* ============================================================================
+   AUDIO POSTS GALLERY - MOBILE OPTIMIZATIONS
+   ============================================================================ */
+
+#audio-posts-gallery {
+    transition: padding 0.2s ease;
+}
+
+@media (max-width: 768px) {
+    #audio-posts-gallery {
+        padding: 1rem !important;
+        border-radius: 12px !important;
+        margin-top: 1rem !important;
+        border: none !important;
+        background: rgba(31, 41, 55, 0.3) !important;
+    }
+
+    #audio-posts-gallery h2 {
+        font-size: 1.125rem !important;
+        margin-bottom: 1rem !important;
+    }
+
+    #audio-posts-gallery h2 svg {
+        width: 1.25rem !important;
+        height: 1.25rem !important;
+    }
+
+    #audio-posts-gallery .grid {
+        gap: 0.75rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    #audio-posts-gallery {
+        padding: 0.75rem !important;
+        border-radius: 10px !important;
+        margin-top: 0.75rem !important;
+    }
+
+    #audio-posts-gallery h2 {
+        font-size: 1rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+
+    #audio-posts-gallery .grid {
+        gap: 0.5rem !important;
+    }
+
+    /* Empty state mobile */
+    #audio-posts-gallery .text-center.py-12 {
+        padding: 2rem 0.5rem !important;
+    }
+
+    #audio-posts-gallery .text-center.py-12 svg {
+        width: 3rem !important;
+        height: 3rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+
+    #audio-posts-gallery .text-center.py-12 p {
+        font-size: 0.9375rem !important;
+    }
+
+    #audio-posts-gallery .text-center.py-12 button {
+        padding: 0.625rem 1rem !important;
+        font-size: 0.875rem !important;
+    }
+}
+
+/* ============================================================================
+   ACCESSIBILITY
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Focus styles for keyboard navigation */
+button:focus,
+a:focus {
+    outline: 2px solid #8B5CF6;
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .dashboard-section {
+        border: 2px solid #000000;
+    }
+
+    .breakdown-bar {
+        border: 1px solid #000000;
+    }
+}
+
+/* ============================================================================
+   ENTERPRISE PSYCHOLOGY: TRANSPARENCY & EXPLANATIONS
+   ============================================================================ */
+
+/* Info icon tooltips (hover explanations) */
+.info-icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    font-size: 12px;
+    line-height: 16px;
+    text-align: center;
+    background: rgba(139, 92, 246, 0.2);
+    border-radius: 50%;
+    color: #A78BFA; /* purple-400 */
+    cursor: help;
+    margin-left: 0.25rem;
+    transition: all 0.2s ease;
+}
+
+.info-icon:hover {
+    background: rgba(139, 92, 246, 0.4);
+    transform: scale(1.1);
+}
+
+/* Breakdown explanation text (below each metric) */
+.breakdown-explanation {
+    grid-column: 1 / -1;
+    font-size: 0.8125rem;
+    color: #9CA3AF; /* text-gray-400 */
+    font-style: italic;
+    margin-top: -0.5rem;
+    padding-left: 0.5rem;
+    border-left: 2px solid rgba(139, 92, 246, 0.3);
+}
+
+/* Update breakdown-item grid to accommodate explanation */
+.breakdown-item {
+    display: grid;
+    grid-template-columns: 150px 1fr 60px;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.5rem; /* Space for explanation */
+}
+
+/* Collapsible calculation explanation */
+.calculation-explanation {
+    margin-top: 2rem;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 12px;
+    background: rgba(17, 24, 39, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.calculation-explanation[open] {
+    border-color: rgba(139, 92, 246, 0.6);
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.2);
+}
+
+.calculation-explanation summary {
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #A78BFA; /* purple-400 */
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.calculation-explanation summary:hover {
+    background: rgba(139, 92, 246, 0.1);
+    color: #C4B5FD; /* purple-300 */
+}
+
+.calculation-explanation summary::-webkit-details-marker {
+    display: none;
+}
+
+.calculation-explanation summary::before {
+    content: '▶';
+    display: inline-block;
+    font-size: 0.75rem;
+    transition: transform 0.3s ease;
+}
+
+.calculation-explanation[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.explanation-content {
+    padding: 1.5rem;
+    border-top: 1px solid rgba(107, 114, 128, 0.2);
+    color: #D1D5DB; /* text-gray-300 */
+    line-height: 1.6;
+}
+
+.explanation-content p {
+    margin-bottom: 1.5rem;
+}
+
+.metric-explanation {
+    margin-bottom: 2rem;
+    padding: 1.25rem;
+    background: rgba(31, 41, 55, 0.5);
+    border-radius: 8px;
+    border-left: 3px solid #8B5CF6;
+}
+
+.metric-explanation h4 {
+    margin: 0 0 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #C4B5FD; /* purple-300 */
+}
+
+.metric-explanation p {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+}
+
+.metric-explanation strong {
+    color: #E5E7EB; /* text-gray-200 */
+    font-weight: 600;
+}
+
+.metric-explanation em {
+    color: #A78BFA; /* purple-400 */
+    font-style: italic;
+}
+
+.disclaimer {
+    padding: 1rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    margin-top: 1.5rem;
+    font-size: 0.9375rem;
+    color: #BFDBFE; /* blue-200 */
+    line-height: 1.6;
+}
+
+.disclaimer strong {
+    color: #93C5FD; /* blue-300 */
+}
+
+/* ============================================================================
+   INSIGHTS METHODOLOGY SECTION
+   ============================================================================ */
+
+.insights-header {
+    margin-bottom: 1.5rem;
+}
+
+.insights-subtitle {
+    font-size: 0.9375rem;
+    color: #9CA3AF; /* text-gray-400 */
+    line-height: 1.6;
+    margin: 0.75rem 0 0;
+    max-width: 800px;
+}
+
+.insights-methodology {
+    margin-top: 2rem;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 12px;
+    background: rgba(17, 24, 39, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.insights-methodology[open] {
+    border-color: rgba(59, 130, 246, 0.6);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2);
+}
+
+.insights-methodology summary {
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #60A5FA; /* blue-400 */
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.insights-methodology summary:hover {
+    background: rgba(59, 130, 246, 0.1);
+    color: #93C5FD; /* blue-300 */
+}
+
+.insights-methodology summary::-webkit-details-marker {
+    display: none;
+}
+
+.insights-methodology summary::before {
+    content: '▶';
+    display: inline-block;
+    font-size: 0.75rem;
+    transition: transform 0.3s ease;
+}
+
+.insights-methodology[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.methodology-content {
+    padding: 1.5rem;
+    border-top: 1px solid rgba(107, 114, 128, 0.2);
+    color: #D1D5DB; /* text-gray-300 */
+    line-height: 1.6;
+}
+
+.methodology-content h4 {
+    margin: 1.5rem 0 0.75rem;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: #93C5FD; /* blue-300 */
+}
+
+.methodology-content ul {
+    margin: 0.5rem 0 1rem 1.5rem;
+    padding: 0;
+}
+
+.methodology-content li {
+    margin-bottom: 0.75rem;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+}
+
+.methodology-content li strong {
+    color: #E5E7EB; /* text-gray-200 */
+    font-weight: 600;
+}
+
+.methodology-content p:first-child {
+    margin-top: 0;
+}
+
+/* ============================================================================
+   RESPONSIVE ENHANCEMENTS FOR NEW SECTIONS
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    .calculation-explanation summary,
+    .insights-methodology summary {
+        padding: 0.875rem 1rem;
+        font-size: 0.9375rem;
+    }
+
+    .explanation-content,
+    .methodology-content {
+        padding: 1rem;
+    }
+
+    .metric-explanation {
+        padding: 1rem;
+    }
+
+    .breakdown-item {
+        grid-template-columns: 100px 1fr 50px;
+    }
+
+    .breakdown-explanation {
+        font-size: 0.75rem;
+        padding-left: 0.25rem;
+    }
+}
+
+/* ============================================================================
+   JOURNAL CALENDAR SIDEBAR - ENTERPRISE GALAXY+ Phase 2.0
+   ============================================================================
+   30-day calendar with emotion heatmap for Timeline tab.
+   Psychology: Visual emotion clustering aids pattern recognition.
+   Security: All IDs via UUID only (anti-enumeration).
+   ============================================================================ */
+
+/* Layout: Dual-column with sidebar (ENTERPRISE: Psychology-optimized)
+ *
+ * ARCHITECTURE:
+ * - Sidebar: 300px fixed (calendar with emotion heatmap needs visual space)
+ * - Timeline: 1fr (fluid - takes ALL remaining container width)
+ * - Gap: 1.5rem (24px breathing room for visual separation)
+ *
+ * PROPORTIONS (on typical 1200px container):
+ * - Sidebar: 300px = 25%
+ * - Timeline: 900px = 75%
+ *
+ * RESPONSIVE: Mobile collapses to single column (see @media below)
+ */
+.journal-timeline-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 1.5rem;
+    min-height: 600px;
+}
+
+/* Calendar Sidebar - ENTERPRISE V10.126: Fixed layout with scrollable days only */
+.journal-calendar-sidebar {
+    position: sticky;
+    top: 1rem;
+    height: fit-content;
+    max-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    background: rgba(17, 24, 39, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    border: 1px solid rgba(75, 85, 99, 0.4);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.journal-calendar-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.journal-calendar-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.journal-calendar-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.4);
+    border-radius: 3px;
+}
+
+/* Calendar Header - ENTERPRISE Real Calendar with Month/Year Navigation */
+.calendar-sidebar-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgba(75, 85, 99, 0.3);
+    position: sticky;
+    top: 0;
+    background: rgba(17, 24, 39, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 10;
+}
+
+.calendar-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #F9FAFB;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.calendar-icon {
+    font-size: 1.125rem;
+}
+
+.calendar-today-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #A78BFA;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.calendar-today-btn:hover {
+    background: rgba(139, 92, 246, 0.25);
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+/* ============================================================================
+   CALENDAR SIDEBAR - Vertical Day List with Navigation
+   ============================================================================ */
+
+/* Navigation Header - ENTERPRISE V10.126: Fixed at top */
+.calendar-nav-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.95) 0%, rgba(17, 24, 39, 0.98) 100%);
+    border-bottom: 1px solid rgba(75, 85, 99, 0.3);
+    border-radius: 16px 16px 0 0;
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.calendar-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 8px;
+    color: #A78BFA;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.calendar-nav-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.calendar-nav-btn:hover:not(.disabled) {
+    background: rgba(139, 92, 246, 0.3);
+    border-color: rgba(139, 92, 246, 0.5);
+    color: #C4B5FD;
+}
+
+.calendar-nav-btn.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.calendar-month-year {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+}
+
+.calendar-month-year .month-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #F3F4F6;
+}
+
+.calendar-month-year .year {
+    font-size: 0.75rem;
+    color: #9CA3AF;
+}
+
+/* Days List (Vertical) - ENTERPRISE V10.126: Scrollable with flex-grow */
+.calendar-days-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0.5rem;
+    flex: 1;
+    min-height: 300px;
+    max-height: 600px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, 0.4) transparent;
+}
+
+.calendar-days-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.calendar-days-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.calendar-days-list::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.4);
+    border-radius: 3px;
+}
+
+/* Single Day Row */
+.calendar-day-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    background: rgba(31, 41, 55, 0.4);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    width: 100%;
+}
+
+.calendar-day-row:hover:not(.is-disabled) {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.3);
+}
+
+.calendar-day-row.is-today {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.4);
+}
+
+.calendar-day-row.is-selected {
+    background: rgba(139, 92, 246, 0.35);
+    border-color: #8B5CF6;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.25);
+}
+
+.calendar-day-row.is-disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.calendar-day-row.has-entries {
+    background: rgba(31, 41, 55, 0.6);
+    border-color: rgba(75, 85, 99, 0.4);
+}
+
+.calendar-day-row .day-number {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #E5E7EB;
+    min-width: 24px;
+}
+
+.calendar-day-row .day-name {
+    font-size: 0.8125rem;
+    color: #9CA3AF;
+    flex: 1;
+}
+
+.calendar-day-row .today-badge {
+    font-size: 0.5625rem;
+    font-weight: 700;
+    color: #A78BFA;
+    background: rgba(139, 92, 246, 0.2);
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.calendar-day-row .day-emotions {
+    display: flex;
+    gap: 3px;
+}
+
+.calendar-day-row .emotion-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.calendar-day-row .entry-count {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #A78BFA;
+    background: rgba(139, 92, 246, 0.2);
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* Calendar Actions - ENTERPRISE V10.126: Sticky at bottom */
+.calendar-actions {
+    padding: 0.5rem;
+    border-top: 1px solid rgba(75, 85, 99, 0.2);
+    background: rgba(17, 24, 39, 0.95);
+    flex-shrink: 0;
+}
+
+.calendar-today-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    width: 100%;
+    padding: 0.625rem;
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 8px;
+    color: #A78BFA;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.calendar-today-btn:hover {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.4);
+}
+
+/* Trash Section - ENTERPRISE V10.126: Sticky at bottom */
+.calendar-trash-section {
+    padding: 0.75rem;
+    border-top: 1px solid rgba(75, 85, 99, 0.3);
+    background: rgba(17, 24, 39, 0.95);
+    flex-shrink: 0;
+    border-radius: 0 0 16px 16px;
+}
+
+.calendar-trash-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 10px;
+    color: #FCA5A5;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.calendar-trash-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.trash-icon {
+    font-size: 1rem;
+}
+
+.trash-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 0.375rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #FEF2F2;
+    background: #DC2626;
+    border-radius: 9px;
+}
+
+/* Legend */
+.calendar-legend {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid rgba(75, 85, 99, 0.3);
+    background: rgba(17, 24, 39, 0.5);
+}
+
+.legend-title {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #9CA3AF;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.legend-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.legend-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: #D1D5DB;
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Loading States */
+.calendar-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    color: #9CA3AF;
+    font-size: 0.875rem;
+}
+
+.calendar-loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(139, 92, 246, 0.2);
+    border-top-color: #8B5CF6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+.calendar-day-skeleton {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    background: rgba(31, 41, 55, 0.4);
+    border-radius: 10px;
+}
+
+.skeleton-date,
+.skeleton-emotions {
+    background: linear-gradient(90deg, rgba(75, 85, 99, 0.3) 25%, rgba(75, 85, 99, 0.5) 50%, rgba(75, 85, 99, 0.3) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: 4px;
+}
+
+.skeleton-date {
+    width: 60px;
+    height: 32px;
+}
+
+.skeleton-emotions {
+    width: 80px;
+    height: 24px;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Main Timeline Content */
+.journal-timeline-main {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Responsive: Stack on mobile */
+@media (max-width: 1024px) {
+    .journal-timeline-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .journal-calendar-sidebar {
+        position: relative;
+        top: 0;
+        max-height: 400px;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Timeline content below calendar */
+    .journal-timeline-main {
+        margin-top: 0.5rem;
+    }
+
+    #journal-timeline-container > div {
+        margin-top: 0.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .journal-calendar-sidebar {
+        max-height: 350px;
+        margin-bottom: 1.25rem;
+    }
+
+    .journal-timeline-main {
+        margin-top: 0.75rem;
+    }
+
+    #journal-timeline-container > div {
+        margin-top: 0.75rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .journal-calendar-sidebar {
+        max-height: 340px;
+        margin-bottom: 1rem;
+    }
+
+    /* Calendar navigation header mobile fix */
+    .calendar-nav-header {
+        padding: 0.625rem 0.75rem;
+    }
+
+    .calendar-month-year {
+        font-size: 0.9375rem;
+    }
+
+    .calendar-nav-btn {
+        width: 28px;
+        height: 28px;
+    }
+
+    .calendar-nav-btn svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .journal-timeline-main {
+        margin-top: 1rem;
+    }
+
+    #journal-timeline-container > div {
+        margin-top: 1rem;
+    }
+
+    .calendar-day-item {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .day-date {
+        font-size: 0.8125rem;
+    }
+
+    .day-emotion {
+        width: 20px;
+        height: 20px;
+        font-size: 0.625rem;
+    }
+}
+
+/* ============================================================================
+   TIMELINE PROTECTED STATE - Enterprise v4.6 E2E Encryption
+   ============================================================================ */
+
+.timeline-protected-overlay {
+    position: relative;
+    min-height: 400px;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.timeline-protected-blur {
+    position: absolute;
+    inset: 0;
+    filter: blur(8px);
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.blur-placeholder {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem;
+}
+
+.blur-card {
+    height: 120px;
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(55, 65, 81, 0.4) 100%);
+    border-radius: 12px;
+    border: 1px solid rgba(75, 85, 99, 0.3);
+}
+
+.timeline-protected-message {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    background: rgba(17, 24, 39, 0.85);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.protected-icon {
+    color: #8B5CF6;
+    margin-bottom: 1.5rem;
+    animation: protectedPulse 2s ease-in-out infinite;
+}
+
+@keyframes protectedPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+.protected-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #F9FAFB;
+    margin-bottom: 0.75rem;
+}
+
+.protected-description {
+    font-size: 1rem;
+    color: #9CA3AF;
+    max-width: 320px;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+.protected-unlock-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.5rem;
+    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+    color: #FFFFFF;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.protected-unlock-btn:hover {
+    background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+}
+
+.protected-unlock-btn:active {
+    transform: translateY(0);
+}
+
+.protected-hint {
+    margin-top: 1.5rem;
+    font-size: 0.8125rem;
+    color: #6B7280;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+    .timeline-protected-overlay {
+        min-height: 300px;
+    }
+
+    .protected-icon svg {
+        width: 48px;
+        height: 48px;
+    }
+
+    .protected-title {
+        font-size: 1.25rem;
+    }
+
+    .protected-description {
+        font-size: 0.9375rem;
+        padding: 0 1rem;
+    }
+
+    .protected-unlock-btn {
+        padding: 0.75rem 1.25rem;
+        font-size: 0.875rem;
+    }
+}
+
+/* ============================================================================
+   ENTERPRISE REAL CALENDAR GRID - Month/Year Navigation
+   ============================================================================ */
+
+/* Calendar Navigation Header */
+.calendar-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.calendar-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 8px;
+    color: #A78BFA;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.calendar-nav-btn:hover:not(:disabled) {
+    background: rgba(139, 92, 246, 0.25);
+    border-color: rgba(139, 92, 246, 0.5);
+    color: #C4B5FD;
+}
+
+.calendar-nav-btn:disabled,
+.calendar-nav-btn.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.calendar-nav-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.calendar-month-year {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+}
+
+.calendar-month {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #F9FAFB;
+}
+
+.calendar-year {
+    font-size: 0.75rem;
+    color: #9CA3AF;
+}
+
+.calendar-quick-nav {
+    display: flex;
+    justify-content: center;
+}
+
+/* ============================================================================
+   PROFILE TABS - FILE FOLDER STYLE (ENTERPRISE)
+   ============================================================================ */
+
+.profile-tabs-container {
+    margin-bottom: 1.5rem;
+}
+
+.profile-tabs-nav {
+    display: flex;
+    gap: 0;
+    background: transparent;
+    padding: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.profile-tabs-nav::-webkit-scrollbar {
+    display: none;
+}
+
+/* File Folder Tab Style */
+.profile-tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    padding: 1rem 1.25rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #9CA3AF;
+    background: rgba(31, 41, 55, 0.4);
+    border: 1px solid rgba(75, 85, 99, 0.3);
+    border-bottom: none;
+    border-radius: 12px 12px 0 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+/* File folder effect - overlapping tabs */
+.profile-tab-btn:not(:first-child) {
+    margin-left: -8px;
+}
+
+.profile-tab-btn:hover:not(.active) {
+    background: rgba(55, 65, 81, 0.5);
+    color: #D1D5DB;
+    z-index: 1;
+}
+
+.profile-tab-btn.active {
+    background: rgba(17, 24, 39, 0.9);
+    border-color: rgba(139, 92, 246, 0.4);
+    color: #F9FAFB;
+    z-index: 2;
+    box-shadow: 0 -4px 12px rgba(139, 92, 246, 0.15);
+}
+
+/* Active tab extends into content area */
+.profile-tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: rgba(17, 24, 39, 0.9);
+}
+
+.tab-icon {
+    font-size: 1.125rem;
+    flex-shrink: 0;
+}
+
+.tab-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Tab Content Container */
+.profile-tabs-content {
+    background: rgba(17, 24, 39, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(75, 85, 99, 0.4);
+    border-top: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 0 0 16px 16px;
+    padding: 1.5rem;
+    min-height: 400px;
+}
+
+.profile-tab-panel {
+    display: none;
+}
+
+.profile-tab-panel.active {
+    display: block;
+}
+
+/* Responsive tabs */
+@media (max-width: 768px) {
+    .profile-tab-btn {
+        flex: 1 1 auto;
+        padding: 0.75rem 0.5rem;
+        font-size: 0.8125rem;
+        justify-content: center;
+    }
+
+    .profile-tab-btn:not(:first-child) {
+        margin-left: -4px;
+    }
+
+    .tab-label {
+        display: none;
+    }
+
+    .tab-icon {
+        font-size: 1.25rem;
+    }
+
+    .profile-tabs-content {
+        padding: 0.75rem;
+        border-radius: 0 0 12px 12px;
+        border: none;
+        background: rgba(17, 24, 39, 0.4);
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-tab-btn {
+        padding: 0.625rem 0.375rem;
+    }
+
+    .tab-icon {
+        font-size: 1.125rem;
+    }
+
+    .profile-tabs-content {
+        padding: 0.5rem;
+        border-radius: 0 0 10px 10px;
+        min-height: 300px;
+    }
+}
+
+/* ============================================================================
+   AUDIO PLAYER CONTAINER - Full Width in Entry Card
+   ============================================================================ */
+
+.audio-player-container {
+    width: 100%;
+    margin: 1rem 0;
+}
+
+.audio-player-encrypted,
+.audio-player-public {
+    width: 100%;
+}
+
+.audio-player-public audio {
+    width: 100%;
+    border-radius: 8px;
+}
+
+/* ============================================================================
+   DROPDOWN MENU - Three Dots Actions
+   ============================================================================ */
+
+.entry-actions-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: rgba(75, 85, 99, 0.3);
+    border: 1px solid rgba(75, 85, 99, 0.4);
+    border-radius: 8px;
+    color: #9CA3AF;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.dropdown-toggle-btn:hover {
+    background: rgba(75, 85, 99, 0.5);
+    color: #F9FAFB;
+}
+
+.dropdown-toggle-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 0.25rem;
+    min-width: 160px;
+    background: rgba(17, 24, 39, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(75, 85, 99, 0.5);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all 0.2s ease;
+}
+
+.dropdown-menu.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #D1D5DB;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+}
+
+.dropdown-item:first-child {
+    border-radius: 7px 7px 0 0;
+}
+
+.dropdown-item:last-child {
+    border-radius: 0 0 7px 7px;
+}
+
+.dropdown-item:hover {
+    background: rgba(139, 92, 246, 0.2);
+    color: #F9FAFB;
+}
+
+.dropdown-item.danger {
+    color: #FCA5A5;
+}
+
+.dropdown-item.danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #FEF2F2;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: rgba(75, 85, 99, 0.4);
+    margin: 0.25rem 0;
+}
+
+/* ============================================================================
+   LEGEND DOTS - Positive/Negative Colors
+   ============================================================================ */
+
+.legend-dot.positive {
+    background: linear-gradient(135deg, #FFD700, #32CD32);
+}
+
+.legend-dot.negative {
+    background: linear-gradient(135deg, #DC143C, #8B008B);
+}
+
+/* ============================================================================
+   ENTERPRISE ENTRY DROPDOWN MENU - Ultra-High Z-Index for Proper Layering
+   ============================================================================ */
+
+.entry-dropdown-wrapper {
+    position: relative;
+    z-index: 1;
+}
+
+.entry-dropdown-menu {
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    margin-bottom: 0.5rem;
+    min-width: 12rem;
+    background: rgba(17, 24, 39, 0.98);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 12px;
+    box-shadow:
+        0 -8px 32px rgba(0, 0, 0, 0.5),
+        0 -4px 16px rgba(139, 92, 246, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    padding: 0.5rem;
+    z-index: 9999 !important;
+    transform-origin: bottom right;
+}
+
+.entry-dropdown-menu:not(.hidden) {
+    animation: dropdownSlideUp 0.2s ease-out;
+}
+
+@keyframes dropdownSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.entry-dropdown-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: rgba(75, 85, 99, 0.2);
+    border: 1px solid rgba(75, 85, 99, 0.3);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.entry-dropdown-trigger:hover {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.4);
+}
+
+.entry-dropdown-trigger:hover svg {
+    color: #A78BFA !important;
+}
+
+/* Dropdown icons */
+.dropdown-icon {
+    width: 20px;
+    height: 20px;
+    color: #9CA3AF;
+    transition: color 0.2s ease;
+}
+
+.entry-dropdown-trigger:hover .dropdown-icon {
+    color: #A78BFA;
+}
+
+/* Delete button enterprise styling */
+.dropdown-delete-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.625rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #FCA5A5;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+}
+
+.dropdown-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #FEF2F2;
+}
+
+.dropdown-delete-btn .delete-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* ============================================================================
+   ENTERPRISE V11.7 - MOBILE OVERFLOW FIX
+   ============================================================================
+   Fix for emotion sections overflowing on mobile devices.
+   Applied to: Ruota delle Emozioni, Emozioni Espresse, Timeline Emotiva
+   IMPORTANT: Use specific selectors to avoid affecting navbar dropdowns!
+   ============================================================================ */
+
+/* Prevent horizontal overflow on dashboard sections ONLY */
+.dashboard-section,
+.dashboard-container {
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+
+/* Profile tabs content - prevent overflow */
+.profile-tabs-content {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Profile tab panels - contain content */
+.profile-tab-panel {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Emotion wheel chart container fix */
+.ea-wheel-container,
+.emotion-wheel-container {
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* Chart.js canvas - constrain to parent */
+.profile-tabs-content canvas,
+.dashboard-section canvas {
+    max-width: 100% !important;
+}
+
+/* Mobile specific fixes */
+@media (max-width: 768px) {
+    /* Profile sections only (use section inside profile-tabs-content) */
+    .profile-tabs-content section,
+    .profile-tab-panel section,
+    .dashboard-section {
+        max-width: 100%;
+        overflow-x: hidden;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    /* Emotion legend grid - prevent overflow */
+    .profile-tabs-content .grid.grid-cols-2 {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    /* Bar chart container */
+    .ea-bar-chart-container,
+    .profile-tabs-content [class*="bar-chart"] {
+        max-width: 100%;
+        overflow-x: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-tabs-content section,
+    .profile-tab-panel section,
+    .dashboard-section {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        border-radius: 12px;
+    }
+}
+
+/* ============================================================================
+   ENTERPRISE AUDIO PLAYER - Full Width Expansion
+   ============================================================================ */
+
+.journal-audio-player {
+    width: 100%;
+}
+
+.journal-audio-player .audio-player-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.journal-audio-player .audio-player-container > div:first-child {
+    width: 100%;
+}
+
+/* Progress bar enhanced styling */
+.audio-progress-container {
+    flex: 1;
+    min-width: 0;
+}
+

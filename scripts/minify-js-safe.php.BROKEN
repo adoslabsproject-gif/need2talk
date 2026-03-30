@@ -1,0 +1,182 @@
+<?php
+/**
+ * Safe JS Minifier - Enterprise Edition
+ *
+ * Handles template literals correctly by not touching content inside backticks.
+ * Removes comments and reduces whitespace while preserving functionality.
+ */
+
+$input = $argv[1] ?? null;
+$output = $argv[2] ?? null;
+
+if (!$input || !$output) {
+    echo "Usage: php minify-js-safe.php input.js output.min.js\n";
+    exit(1);
+}
+
+$content = file_get_contents($input);
+if ($content === false) {
+    echo "Error reading file: $input\n";
+    exit(1);
+}
+
+// Step 1: Extract template literals and replace with placeholders
+$templateLiterals = [];
+$placeholder = '___TEMPLATE_LITERAL___';
+$counter = 0;
+
+$result = '';
+$i = 0;
+$len = strlen($content);
+$inTemplate = false;
+$templateStart = 0;
+$braceDepth = 0;
+
+while ($i < $len) {
+    $char = $content[$i];
+
+    if (!$inTemplate && $char === '`') {
+        // Start of template literal
+        $inTemplate = true;
+        $templateStart = $i;
+        $braceDepth = 0;
+        $i++;
+        continue;
+    }
+
+    if ($inTemplate) {
+        if ($char === '\\' && $i + 1 < $len) {
+            // Escape sequence - skip next char
+            $i += 2;
+            continue;
+        }
+
+        if ($char === '$' && $i + 1 < $len && $content[$i + 1] === '{') {
+            $braceDepth++;
+            $i += 2;
+            continue;
+        }
+
+        if ($char === '}' && $braceDepth > 0) {
+            $braceDepth--;
+            $i++;
+            continue;
+        }
+
+        if ($char === '`' && $braceDepth === 0) {
+            // End of template literal
+            $templateContent = substr($content, $templateStart, $i - $templateStart + 1);
+            $templateLiterals[$counter] = $templateContent;
+            $result .= $placeholder . $counter . '___';
+            $counter++;
+            $inTemplate = false;
+            $i++;
+            continue;
+        }
+
+        $i++;
+        continue;
+    }
+
+    $result .= $char;
+    $i++;
+}
+
+$content = $result;
+
+// Step 2: Remove multi-line comments (/* ... */)
+$content = preg_replace('/\/\*[\s\S]*?\*\//', '', $content);
+
+// Step 3: Remove single-line comments (// ... to end of line)
+// But be careful not to remove // inside strings
+$lines = explode("\n", $content);
+$cleanedLines = [];
+
+foreach ($lines as $line) {
+    // Simple approach: find // that's not inside a string
+    $cleaned = '';
+    $inString = false;
+    $stringChar = '';
+    $lineLen = strlen($line);
+
+    for ($j = 0; $j < $lineLen; $j++) {
+        $c = $line[$j];
+
+        if (!$inString) {
+            // Check for string start
+            if ($c === '"' || $c === "'") {
+                $inString = true;
+                $stringChar = $c;
+                $cleaned .= $c;
+                continue;
+            }
+
+            // Check for comment
+            if ($c === '/' && $j + 1 < $lineLen && $line[$j + 1] === '/') {
+                // Found comment, stop processing this line
+                break;
+            }
+
+            $cleaned .= $c;
+        } else {
+            // Inside string
+            if ($c === '\\' && $j + 1 < $lineLen) {
+                // Escape sequence
+                $cleaned .= $c . $line[$j + 1];
+                $j++;
+                continue;
+            }
+
+            if ($c === $stringChar) {
+                $inString = false;
+            }
+
+            $cleaned .= $c;
+        }
+    }
+
+    $cleanedLines[] = rtrim($cleaned);
+}
+
+$content = implode("\n", $cleanedLines);
+
+// Step 4: Reduce whitespace
+// Multiple spaces/tabs to single space
+$content = preg_replace('/[ \t]+/', ' ', $content);
+
+// Remove spaces around certain operators (but keep space after keywords)
+$content = preg_replace('/\s*([{};,=+\-*\/<>!&|?:])\s*/', '$1', $content);
+
+// Add back space after keywords
+$keywords = ['class', 'const', 'let', 'var', 'return', 'new', 'if', 'else', 'async', 'await',
+             'function', 'throw', 'catch', 'try', 'static', 'typeof', 'instanceof', 'extends',
+             'import', 'export', 'from', 'default', 'switch', 'case', 'break', 'continue', 'for', 'while', 'do'];
+foreach ($keywords as $kw) {
+    // Add space after keyword if followed by non-space non-( character
+    $content = preg_replace('/\b' . $kw . '\b([^\s(])/', $kw . ' $1', $content);
+}
+
+// Remove empty lines
+$content = preg_replace('/\n\s*\n/', "\n", $content);
+
+// Remove leading/trailing whitespace from lines
+$lines = explode("\n", $content);
+$lines = array_map('trim', $lines);
+$lines = array_filter($lines, function($l) { return $l !== ''; });
+$content = implode("\n", $lines);
+
+// Step 5: Restore template literals
+foreach ($templateLiterals as $idx => $literal) {
+    $content = str_replace($placeholder . $idx . '___', $literal, $content);
+}
+
+// Final cleanup
+$content = trim($content);
+
+file_put_contents($output, $content);
+
+$originalSize = filesize($input);
+$newSize = strlen($content);
+$reduction = round((1 - $newSize / $originalSize) * 100, 1);
+
+echo "Minified: {$newSize} bytes (reduced {$reduction}%)\n";

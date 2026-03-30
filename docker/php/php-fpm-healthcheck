@@ -1,0 +1,8 @@
+#!/bin/sh
+# ENTERPRISE: PHP-FPM Health Check Script
+# Tests if PHP-FPM is responding to FastCGI requests
+
+SCRIPT_NAME=/php-fpm-ping \
+SCRIPT_FILENAME=/php-fpm-ping \
+REQUEST_METHOD=GET \
+cgi-fcgi -bind -connect 127.0.0.1:9000

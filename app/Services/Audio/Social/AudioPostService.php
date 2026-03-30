@@ -1,0 +1,2111 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Need2Talk\Services\Audio\Social;
+
+use Need2Talk\Repositories\Audio\AudioPostRepository;
+use Need2Talk\Services\EnterpriseRedisRateLimitManager;
+use Need2Talk\Services\Logger;
+use Need2Talk\Services\ReactionStatsService;
+use Need2Talk\Services\WebSocketPublisher;
+use Need2Talk\Services\NotificationService;
+use Need2Talk\Services\Cache\OverlayBatchLoader;
+use Need2Talk\Services\Cache\OverlayService;
+use Need2Talk\Services\Cache\UserSettingsOverlayService;
+use Need2Talk\Services\Cache\WriteBehindBuffer;
+use Need2Talk\Services\Cache\FriendshipOverlayService;
+use Need2Talk\Services\Cache\HiddenPostsOverlayService;
+use Need2Talk\Services\Cache\FeedPrecomputeService;
+use Need2Talk\Services\Cache\FeedInvalidationService;
+use Need2Talk\Services\Cache\ActiveUserTracker;
+use Need2Talk\Services\Cache\BannedUsersOverlayService;
+use Need2Talk\Services\Audio\Core\AudioCacheInvalidator;
+
+/**
+ * Audio Post Service - Enterprise Galaxy V4
+ *
+ * Business logic for audio post management
+ * Handles upload, feed generation, playback tracking
+ *
+ * V4 Architecture (2025-11-26):
+ * - Overlay cache for reactions/views (Redis pipeline)
+ * - Write-behind buffer for view tracking
+ * - 95%+ reduction in cache invalidations
+ *
+ * @package Need2Talk\Services\Audio\Social
+ */
+class AudioPostService
+{
+    private AudioPostRepository $repository;
+    private ReactionStatsService $reactionStats;
+    private EnterpriseRedisRateLimitManager $rateLimiter;
+    private ?OverlayBatchLoader $overlayLoader = null;
+    private ?OverlayService $overlayService = null;
+    private ?WriteBehindBuffer $writeBehindBuffer = null;
+    private ?AudioCacheInvalidator $cacheInvalidator = null;
+
+    public function __construct()
+    {
+        $this->repository = new AudioPostRepository();
+        $this->reactionStats = new ReactionStatsService();
+        $this->rateLimiter = new EnterpriseRedisRateLimitManager();
+        $this->overlayLoader = OverlayBatchLoader::getInstance();
+        $this->overlayService = OverlayService::getInstance();
+        $this->writeBehindBuffer = WriteBehindBuffer::getInstance();
+        $this->cacheInvalidator = AudioCacheInvalidator::getInstance();
+    }
+
+    /**
+     * Create new audio post (ENTERPRISE: UUID-ONLY)
+     *
+     * @param string $userUuid User UUID
+     * @param array $audioData Audio file data
+     * @return array Result with post ID or error
+     */
+    public function createPost(string $userUuid, array $audioData): array
+    {
+        try {
+            // ENTERPRISE: Resolve UUID → ID for legacy systems (rate limiter uses ID)
+            $userId = $this->resolveUuidToId($userUuid);
+            if (!$userId) {
+                return [
+                    'success' => false,
+                    'error' => 'invalid_user',
+                    'message' => 'Utente non valido',
+                ];
+            }
+
+            // Rate limit check (10 uploads per day, 5min cooldown)
+            if (!$this->rateLimiter->checkLimit($userId, 'audio_upload')) {
+                $info = $this->rateLimiter->getRateLimitInfo($userId, 'audio_upload');
+
+                return [
+                    'success' => false,
+                    'error' => 'rate_limit_exceeded',
+                    'message' => 'Hai raggiunto il limite giornaliero di upload audio',
+                    'retry_after' => $info['retry_after'] ?? null,
+                    'uploads_today' => $info['current_count'] ?? 0,
+                ];
+            }
+
+            // Validate required fields
+            $requiredFields = ['file_path', 'file_hash', 'file_size', 'duration'];
+            foreach ($requiredFields as $field) {
+                if (empty($audioData[$field])) {
+                    return [
+                        'success' => false,
+                        'error' => 'missing_field',
+                        'message' => "Campo obbligatorio mancante: {$field}",
+                    ];
+                }
+            }
+
+            // Validate duration (max 30 seconds)
+            if ($audioData['duration'] > 30) {
+                return [
+                    'success' => false,
+                    'error' => 'duration_exceeded',
+                    'message' => 'Durata massima 30 secondi',
+                ];
+            }
+
+            // Validate file size (max 500KB)
+            if ($audioData['file_size'] > 500 * 1024) {
+                return [
+                    'success' => false,
+                    'error' => 'file_size_exceeded',
+                    'message' => 'File troppo grande (max 500KB)',
+                ];
+            }
+
+            // Validate emotion ID (1-10)
+            if (!empty($audioData['primary_emotion_id'])) {
+                if ($audioData['primary_emotion_id'] < 1 || $audioData['primary_emotion_id'] > 10) {
+                    return [
+                        'success' => false,
+                        'error' => 'invalid_emotion',
+                        'message' => 'Emozione non valida',
+                    ];
+                }
+            }
+
+            // Step 1: Create audio_files record (with metadata)
+            $description = $audioData['description'] ?? null;
+
+            // Add hashtags to description if provided
+            if (!empty($audioData['hashtags']) && is_array($audioData['hashtags'])) {
+                $hashtagString = implode(' ', array_map(fn ($tag) => '#' . $tag, $audioData['hashtags']));
+                if ($description) {
+                    $description .= "\n\n" . $hashtagString;
+                } else {
+                    $description = $hashtagString;
+                }
+            }
+
+            $audioFileData = [
+                'user_id' => $userId,
+                'user_uuid' => $userUuid,  // ENTERPRISE: UUID-based system
+                'original_filename' => basename($audioData['file_path']),
+                'file_path' => $audioData['file_path'],
+                'file_size' => $audioData['file_size'],
+                'duration' => $audioData['duration'],
+                'title' => $audioData['title'] ?? null,
+                'description' => $description,
+                'primary_emotion_id' => $audioData['primary_emotion_id'] ?? null,
+                'visibility' => $audioData['visibility'] ?? 'public',
+                'photo_url' => $audioData['photo_url'] ?? null,
+                'photo_thumbnail' => $audioData['photo_thumbnail'] ?? null,
+                'location' => $audioData['location'] ?? null, // ENTERPRISE V5.3: Auto GeoIP location
+                'status' => 'processing',  // Worker needs 'processing' to upload to CDN
+                'moderation_status' => 'approved',
+                'published_at' => date('Y-m-d H:i:s'), // Publish IMMEDIATELY (hybrid local→CDN)
+            ];
+
+            // ENTERPRISE DEBUG: Log audio_files creation attempt
+            Logger::security('debug', 'AUDIO UPLOAD: Creating audio_files record', [
+                'user_uuid' => $userUuid,
+                'file_path' => $audioFileData['file_path'],
+                'file_size' => $audioFileData['file_size'],
+                'duration' => $audioFileData['duration'],
+                'emotion_id' => $audioFileData['primary_emotion_id'] ?? null,
+            ]);
+
+            $audioFileId = $this->createAudioFile($audioFileData);
+
+            if (!$audioFileId) {
+                Logger::security('error', 'AUDIO UPLOAD: audio_files creation FAILED', [
+                    'user_uuid' => $userUuid,
+                    'audio_file_data' => $audioFileData,
+                ]);
+
+                return [
+                    'success' => false,
+                    'error' => 'audio_file_creation_failed',
+                    'message' => 'Errore durante la creazione del file audio',
+                ];
+            }
+
+            Logger::security('debug', 'AUDIO UPLOAD: audio_files created successfully', [
+                'user_uuid' => $userUuid,
+                'audio_file_id' => $audioFileId,
+            ]);
+
+            // Step 2: Create audio_posts record (references audio_files)
+            $postData = [
+                'user_id' => $userId,
+                'user_uuid' => $userUuid,  // ENTERPRISE: UUID-based system
+                'post_type' => 'audio',
+                'audio_file_id' => $audioFileId,
+                'content' => $description, // Copy description to post content
+                'visibility' => $audioData['visibility'] ?? 'public',
+                'moderation_status' => 'approved',
+            ];
+
+            // ENTERPRISE FIX #3: Add photo_urls JSON array if photo exists
+            if (!empty($audioData['photo_url'])) {
+                $postData['photo_urls'] = [$audioData['photo_url']]; // JSON array with single photo
+            }
+
+            // ENTERPRISE FIX #7: Add geolocation (GDPR-compliant, opt-in)
+            if (!empty($audioData['location'])) {
+                $postData['location'] = $audioData['location']; // City name from frontend
+            }
+
+            // ENTERPRISE V4 (2025-11-30): Add tagged_users for @mention tagging
+            if (!empty($audioData['mentioned_users'])) {
+                $postData['tagged_users'] = $audioData['mentioned_users'];
+            }
+
+            // ENTERPRISE DEBUG: Log audio_posts creation attempt
+            Logger::security('debug', 'AUDIO UPLOAD: Creating audio_posts record', [
+                'user_uuid' => $userUuid,
+                'audio_file_id' => $audioFileId,
+                'post_type' => 'audio',
+                'visibility' => $audioData['visibility'] ?? 'public',
+                'has_content' => !empty($description),
+            ]);
+
+            $postId = $this->repository->create($postData);
+
+            if (!$postId) {
+                Logger::security('error', 'AUDIO UPLOAD: audio_posts creation FAILED', [
+                    'user_uuid' => $userUuid,
+                    'audio_file_id' => $audioFileId,
+                    'post_data' => $postData,
+                ]);
+
+                return [
+                    'success' => false,
+                    'error' => 'creation_failed',
+                    'message' => 'Errore durante la creazione del post',
+                ];
+            }
+
+            Logger::security('debug', 'AUDIO UPLOAD: audio_posts created successfully', [
+                'user_id' => $userId,
+                'post_id' => $postId,
+                'audio_file_id' => $audioFileId,
+            ]);
+
+            // Log upload for rate limiting
+            $this->rateLimiter->incrementCounter($userId, 'audio_upload');
+
+            // ENTERPRISE FIX #1: Track emotion selection automatically
+            if (!empty($audioData['primary_emotion_id'])) {
+                $this->trackEmotion($userId, $audioData['primary_emotion_id']);
+            }
+
+            Logger::info('Audio post created', [
+                'user_id' => $userId,
+                'post_id' => $postId,
+                'duration' => $audioData['duration'],
+                'emotion_id' => $audioData['primary_emotion_id'] ?? null,
+            ]);
+
+            // ENTERPRISE V4 (2025-11-30): Send @mention notifications for tagged users
+            // Uses NotificationService for WebSocket + DB persistence
+            $this->sendMentionNotifications(
+                $postId,
+                $userId,
+                $audioData['mentioned_users'] ?? [],
+                $description ?? ''
+            );
+
+            // ENTERPRISE GALAXY: Real-time WebSocket notification (Hybrid System)
+            // Opzione B: Notifica followers con feed aperto (~50 messaggi per 10% followers online → 5ms overhead)
+            // Session Flag + WebSocket = Best of both worlds (real-time feed updates)
+
+            // Step 1: Get user info for WebSocket payload (nickname + avatar for feed display)
+            $userInfo = db()->findOne(
+                "SELECT nickname, avatar_url FROM users WHERE id = ?",
+                [$userId],
+                ['cache' => true, 'cache_ttl' => 'short']
+            );
+
+            // Step 2: Notifica followers che hanno il feed aperto (ENTERPRISE SMART)
+            // Followers vedranno il nuovo post apparire in real-time nel feed senza reload
+            if ($userInfo && $audioData['visibility'] === 'public') {
+                // Transform avatar URL to absolute path (same logic as getFeed)
+                $avatarUrl = $userInfo['avatar_url'] ?? '/assets/img/default-avatar.png';
+                if (!str_starts_with($avatarUrl, 'http') && !str_starts_with($avatarUrl, '/')) {
+                    $avatarUrl = '/storage/uploads/' . $avatarUrl;
+                }
+
+                \Need2Talk\Services\WebSocketPublisher::publishToFollowers($userUuid, 'new_audiopost', [
+                    'post_id' => $postId,
+                    'post_type' => 'audio',
+                    'author' => [
+                        'uuid' => $userUuid,
+                        'nickname' => $userInfo['nickname'],
+                        'avatar_url' => $avatarUrl,
+                    ],
+                    'audio' => [
+                        'duration' => $audioData['duration'],
+                        'title' => $audioData['title'] ?? null,
+                        'photo_url' => $audioData['photo_url'] ?? null,
+                        'photo_thumbnail' => $audioData['photo_thumbnail'] ?? null,
+                    ],
+                    'emotion_id' => $audioData['primary_emotion_id'] ?? null,
+                    'content' => $audioData['description'] ?? null,
+                    'timestamp' => microtime(true),
+                ]);
+
+                // ENTERPRISE PSR-3 LOGGING
+                Logger::info('New audiopost published via WebSocket', [
+                    'user_uuid' => $userUuid,
+                    'user_id' => $userId,
+                    'post_id' => $postId,
+                    'websocket_published' => true,
+                    'visibility' => 'public',
+                ]);
+            } elseif ($audioData['visibility'] !== 'public') {
+                // Private posts don't trigger follower notifications
+                Logger::debug('Audiopost created (private - no WebSocket notification)', [
+                    'user_uuid' => $userUuid,
+                    'post_id' => $postId,
+                    'visibility' => $audioData['visibility'],
+                ]);
+            }
+
+            // ENTERPRISE GALAXY: Set cache bypass for 30 seconds
+            // User will see their new post immediately in feed/profile
+            // ENTERPRISE V11.6: Bypass precomputed feed for 30 seconds
+            // After 30s, cache is rebuilt with the new post included
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $_SESSION['_user_cache_bypass_until'] = time() + 30;
+            }
+
+            // ENTERPRISE GALAXY V8.0 (2025-12-01): Feed Invalidation
+            // Invalidates pre-computed feeds for all followers when new post is created
+            // This triggers background re-computation for active followers
+            try {
+                $invalidationService = FeedInvalidationService::getInstance();
+                $invalidationService->onNewPost($userId, $postId);
+            } catch (\Exception $e) {
+                // Non-critical, feed will be refreshed on next request
+                Logger::warning('Feed invalidation failed on new post', [
+                    'user_id' => $userId,
+                    'post_id' => $postId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            return [
+                'success' => true,
+                'post_id' => $postId,
+                'message' => 'Audio pubblicato con successo',
+            ];
+
+        } catch (\Exception $e) {
+            Logger::error('Failed to create audio post', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'server_error',
+                'message' => 'Errore del server',
+            ];
+        }
+    }
+
+    /**
+     * Create audio_files record
+     *
+     * @param array $data Audio file data
+     * @return int|false Audio file ID or false on failure
+     */
+    private function createAudioFile(array $data): int|false
+    {
+        // ENTERPRISE FIX V5.3: Added user_uuid + location to INSERT
+        $sql = "INSERT INTO audio_files (
+            user_id,
+            user_uuid,
+            original_filename,
+            file_path,
+            file_size,
+            duration,
+            title,
+            description,
+            primary_emotion_id,
+            visibility,
+            photo_url,
+            photo_thumbnail,
+            location,
+            status,
+            moderation_status,
+            created_at,
+            published_at
+        ) VALUES (
+            :user_id,
+            :user_uuid,
+            :original_filename,
+            :file_path,
+            :file_size,
+            :duration,
+            :title,
+            :description,
+            :primary_emotion_id,
+            :visibility,
+            :photo_url,
+            :photo_thumbnail,
+            :location,
+            :status,
+            :moderation_status,
+            NOW(),
+            :published_at
+        )";
+
+        try {
+            $pdo = db_pdo();
+            $stmt = $pdo->prepare($sql);
+
+            $stmt->execute([
+                'user_id' => $data['user_id'],
+                'user_uuid' => $data['user_uuid'] ?? null,
+                'original_filename' => $data['original_filename'],
+                'file_path' => $data['file_path'],
+                'file_size' => $data['file_size'],
+                'duration' => $data['duration'],
+                'title' => $data['title'] ?? null,
+                'description' => $data['description'] ?? null,
+                'primary_emotion_id' => $data['primary_emotion_id'] ?? null,
+                'visibility' => $data['visibility'] ?? 'public',
+                'photo_url' => $data['photo_url'] ?? null,
+                'photo_thumbnail' => $data['photo_thumbnail'] ?? null,
+                'location' => $data['location'] ?? null, // ENTERPRISE V5.3: Auto GeoIP
+                'status' => $data['status'] ?? 'approved',
+                'moderation_status' => $data['moderation_status'] ?? 'approved',
+                'published_at' => $data['published_at'] ?? null,
+            ]);
+
+            return (int) $pdo->lastInsertId();
+
+        } catch (\PDOException $e) {
+            Logger::error('Failed to create audio_files record', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Get social feed for user
+     *
+     * ENTERPRISE GALAXY V4 (2025-11-26):
+     * - Overlay batch loading via Redis pipeline (1 round-trip for all posts)
+     * - Overlay reactions merged with DB stats
+     * - Tombstones filter deleted posts
+     *
+     * ENTERPRISE GALAXY V8.0 (2025-12-01):
+     * - Pre-computed feed for active users (5-10ms response time)
+     * - Stale-while-revalidate pattern for instant response
+     * - ActiveUserTracker integration for proactive caching
+     *
+     * @param int $userId User ID
+     * @param int $page Page number (1-based)
+     * @param int $perPage Posts per page
+     * @return array Feed posts
+     */
+    public function getFeed(string $userUuid, int $page = 1, int $perPage = 20): array
+    {
+        try {
+            // ENTERPRISE: Resolve UUID → ID
+            $userId = $this->resolveUuidToId($userUuid);
+            if (!$userId) {
+                return ['posts' => [], 'has_more' => false];
+            }
+
+            $offset = ($page - 1) * $perPage;
+
+            // ENTERPRISE V11.6 (2025-12-13): Check session cache bypass
+            // When user changes privacy/deletes post, bypass precomputed feed for fresh data
+            $cacheBypassActive = false;
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $bypassUntil = $_SESSION['_user_cache_bypass_until'] ?? 0;
+                if ($bypassUntil > time()) {
+                    $cacheBypassActive = true;
+                    Logger::debug('Feed cache bypass active', [
+                        'user_id' => $userId,
+                        'bypass_remaining_sec' => $bypassUntil - time(),
+                    ]);
+                }
+            }
+
+            // ENTERPRISE GALAXY V8.0: Try pre-computed feed first (5-10ms vs 50-100ms)
+            // Only for first page - pagination still uses on-demand generation
+            // V11.6: Skip precomputed if cache bypass is active
+            if ($page === 1 && $perPage <= 50 && !$cacheBypassActive) {
+                try {
+                    $feedService = FeedPrecomputeService::getInstance();
+                    $precomputed = $feedService->getFeed($userId);
+
+                    if ($precomputed !== null) {
+                        // Pre-computed feed hit! Slice to requested size
+                        $posts = array_slice($precomputed, 0, $perPage);
+
+                        // Track this user as active (for future pre-computation)
+                        $activeTracker = ActiveUserTracker::getInstance();
+                        $activeTracker->recordFeedView($userId);
+
+                        // ENTERPRISE V8.1 (2025-12-06): Apply reaction overlay to precomputed feed
+                        // The precomputed feed may have stale reaction data. Overlay provides real-time updates.
+                        $posts = $this->applyReactionOverlayToFeed($posts, $userId);
+
+                        return [
+                            'success' => true,
+                            'posts' => $posts,
+                            'pagination' => [
+                                'current_page' => $page,
+                                'per_page' => $perPage,
+                                'has_more' => count($precomputed) > $perPage,
+                            ],
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    // Pre-computation failed, fall through to on-demand generation
+                    Logger::warning('Feed precompute lookup failed, using on-demand', [
+                        'user_id' => $userId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            // ENTERPRISE GALAXY V8.0: Track active user even on cache miss
+            // This ensures the user gets pre-computed feeds on next request
+            try {
+                $activeTracker = ActiveUserTracker::getInstance();
+                $activeTracker->recordFeedView($userId);
+            } catch (\Exception $e) {
+                // Non-critical, continue
+            }
+            $posts = $this->repository->getSocialFeed($userId, $perPage, $offset);
+
+            // ENTERPRISE V4: Filter out blocked users (bidirectional)
+            // Uses overlay for O(1) lookup per post - no DB queries needed
+            $friendshipOverlay = FriendshipOverlayService::getInstance();
+            $blockedUserIds = [];
+            if ($friendshipOverlay->isAvailable()) {
+                $blockedUserIds = $friendshipOverlay->getBlockedUserIds($userId);
+            }
+
+            // Filter posts from blocked users (overlay-based, O(n) where n = posts)
+            if (!empty($blockedUserIds)) {
+                $posts = array_filter($posts, function ($post) use ($blockedUserIds) {
+                    $authorId = (int) $post['user_id'];
+                    return !isset($blockedUserIds[$authorId]);
+                });
+                // Re-index array after filter
+                $posts = array_values($posts);
+            }
+
+            // ENTERPRISE V4: Filter hidden posts (OVERLAY CACHE ARCHITECTURE)
+            // Uses HiddenPostsOverlayService for O(1) lookup per post
+            $hiddenOverlay = HiddenPostsOverlayService::getInstance();
+            $hiddenPostIds = [];
+            if ($hiddenOverlay->isAvailable()) {
+                $hiddenPostIds = $hiddenOverlay->getHiddenPostIds($userId);
+            }
+
+            // Filter hidden posts (overlay-based, O(n) where n = posts)
+            if (!empty($hiddenPostIds)) {
+                $posts = array_filter($posts, function ($post) use ($hiddenPostIds) {
+                    $postId = (int) $post['id'];
+                    return !isset($hiddenPostIds[$postId]);
+                });
+                // Re-index array after filter
+                $posts = array_values($posts);
+            }
+
+            // ENTERPRISE V4.7 (2025-12-06): Filter posts from BANNED users
+            // Uses Redis SET for O(1) per-post lookup via SISMEMBER
+            // INSTANT effect when admin bans/unbans - NO cache invalidation needed!
+            // The overlay is the SOURCE OF TRUTH - DB query already excludes deleted_at,
+            // but overlay filters BANNED status (u.status = 'banned') in real-time
+            $bannedOverlay = BannedUsersOverlayService::getInstance();
+            if ($bannedOverlay->isAvailable()) {
+                $beforeCount = count($posts);
+                $posts = $bannedOverlay->filterBannedUsersPosts($posts);
+                $afterCount = count($posts);
+
+                if ($beforeCount !== $afterCount) {
+                    Logger::debug('[BannedOverlay] Filtered banned users from feed', [
+                        'user_id' => $userId,
+                        'before' => $beforeCount,
+                        'after' => $afterCount,
+                        'filtered' => $beforeCount - $afterCount,
+                    ]);
+                }
+            }
+
+            // V4: Bulk load reaction stats from DB (fallback)
+            $postIds = array_map(fn ($post) => (int)$post['id'], $posts);
+            $bulkReactionStats = $this->reactionStats->getBulkPostReactionStats($postIds, $userId);
+
+            // V4: Load overlays via Redis pipeline (1 round-trip for ALL posts!)
+            $overlays = [];
+            if ($this->overlayLoader) {
+                $overlays = $this->overlayLoader->loadBatch($postIds, $userId);
+            }
+
+            // V4: Load avatar overlays for all authors (batch)
+            $authorIds = array_unique(array_map(fn ($post) => (int)$post['user_id'], $posts));
+            $avatarOverlays = [];
+            $settingsOverlay = UserSettingsOverlayService::getInstance();
+            if ($settingsOverlay->isAvailable()) {
+                $avatarOverlays = $settingsOverlay->batchLoadAvatars($authorIds);
+            }
+
+            // ENTERPRISE V11 (2025-12-11): Load ABSOLUTE comment counts ("overlay wins" pattern)
+            //
+            // V6 Delta Bug: After flush, delta=0 but cached base stale → WRONG count
+            // V11 Fix: Store ABSOLUTE count in overlay, delete on flush → correct!
+            //
+            // Pattern: overlay ?? DB (if overlay exists, use it; else use DB value)
+            $commentAbsolutes = [];
+            $overlayService = OverlayService::getInstance();
+            if ($overlayService->isAvailable()) {
+                $commentAbsolutes = $overlayService->getBatchCommentAbsolutes($postIds);
+            }
+
+            // ENTERPRISE V11 (2025-12-11): Load ABSOLUTE play counts ("overlay wins" pattern)
+            // Play count overlay tracks listens (audio_files.play_count)
+            $audioFileIds = array_filter(array_map(fn($p) => (int)($p['audio_file_id'] ?? 0), $posts));
+            $playAbsolutes = [];
+            if ($overlayService->isAvailable() && !empty($audioFileIds)) {
+                $playAbsolutes = $overlayService->getBatchPlayAbsolutes($audioFileIds);
+            }
+
+            // ENTERPRISE V11: Format posts with overlay support
+            // Overlays provide real-time reaction counts without cache invalidation
+            // V11: Uses ABSOLUTE values for play/comment counts (no more delta timing bugs!)
+            $formattedPosts = array_map(function ($post) use ($bulkReactionStats, $overlays, $avatarOverlays, $commentAbsolutes, $playAbsolutes) {
+                $postId = (int) $post['id'];
+
+                // V4: Check for tombstone (soft delete via overlay)
+                $overlay = $overlays[$postId] ?? null;
+                if ($overlay && $overlay['tombstone']) {
+                    return null; // Skip deleted posts
+                }
+
+                // Get base reactions from DB
+                $reactions = $bulkReactionStats[$postId] ?? [
+                    'total_reactions' => 0,
+                    'top_emotions' => [],
+                    'user_reaction' => null,
+                ];
+
+                // Transform reaction stats for frontend ReactionPicker
+                $reactionStats = [];
+                foreach ($reactions['top_emotions'] ?? [] as $emotion) {
+                    $reactionStats[$emotion['emotion_id']] = $emotion['count'];
+                }
+
+                // ENTERPRISE V6.2 (2025-11-30): OVERLAY ALWAYS TAKES PRECEDENCE
+                //
+                // Previous V6.1 bug: We tried to be smart about stale overlays, but this broke
+                // the real-time case where overlay has 0 (just removed) but DB still has 1 (pending flush).
+                //
+                // V6.2 SIMPLE RULE: OVERLAY WINS ALWAYS FOR EMOTIONS IT TRACKS
+                //   - overlay count > 0  → use overlay count (real-time add)
+                //   - overlay count = 0  → REMOVE from result (real-time remove, pending flush)
+                //   - emotion NOT in overlay → use DB value (other users' reactions)
+                //
+                // The overlay is the SOURCE OF TRUTH for real-time updates.
+                // DB is only used for emotions NOT tracked in overlay.
+                // When WriteBehindBuffer flushes to DB, it also CLEARS the overlay entry.
+                if ($overlay && !empty($overlay['reactions'])) {
+                    // Start with DB reactions as base
+                    $mergedStats = $reactionStats;
+
+                    // Apply overlay values - OVERLAY ALWAYS WINS for tracked emotions
+                    foreach ($overlay['reactions'] as $emotionId => $overlayCount) {
+                        if ($overlayCount > 0) {
+                            // Overlay has positive count: use overlay (real-time update)
+                            $mergedStats[$emotionId] = $overlayCount;
+                        } else {
+                            // Overlay has 0: REMOVE this emotion (real-time removal, pending flush)
+                            unset($mergedStats[$emotionId]);
+                        }
+                    }
+
+                    $reactionStats = $mergedStats;
+                }
+
+                // V4: User reaction from overlay takes precedence
+                // ENTERPRISE V4: Overlay values:
+                //   - null: no overlay data → use DB value
+                //   - 0: tombstone (removed, pending DB flush) → return null to frontend
+                //   - >0: active emotion_id → use this value
+                $userReaction = $reactions['user_reaction']['emotion_id'] ?? null;
+                if ($overlay && $overlay['user_reaction'] !== null) {
+                    // Overlay has data - use it
+                    $userReaction = $overlay['user_reaction'] === 0 ? null : $overlay['user_reaction'];
+                }
+
+                // ENTERPRISE: Build emotion object (null if not audio post or no emotion set)
+                $emotionData = null;
+                if ($post['emotion_id']) {
+                    $emotionData = [
+                        'id' => (int) $post['emotion_id'],
+                        'name_it' => $post['emotion_name_it'],
+                        'icon_emoji' => $post['emotion_icon_emoji'],
+                        'color_hex' => $post['emotion_color_hex'],
+                    ];
+                }
+
+                // ENTERPRISE V4: Apply avatar overlay (takes precedence over DB)
+                $authorId = (int) $post['user_id'];
+                $avatarUrl = $avatarOverlays[$authorId] ?? $post['avatar_url'] ?? '/assets/img/default-avatar.png';
+                if (!str_starts_with($avatarUrl, 'http') && !str_starts_with($avatarUrl, '/')) {
+                    // Local upload without prefix: add /storage/uploads/
+                    $avatarUrl = '/storage/uploads/' . $avatarUrl;
+                }
+
+                return [
+                    'id' => $postId,
+                    'uuid' => $post['uuid'],
+                    'author' => [
+                        'id' => (int) $post['user_id'],
+                        'uuid' => $post['author_uuid'] ?? $post['user_uuid'] ?? null,  // ENTERPRISE: UUID for profile link
+                        'nickname' => $post['nickname'],
+                        'avatar_url' => $avatarUrl,
+                    ],
+                    'post_type' => $post['post_type'], // text, audio, photo, video, mixed
+                    'content' => $post['content'],
+                    'audio_file_id' => $post['audio_file_id'] ? (int) $post['audio_file_id'] : null,
+                    'photo_urls' => $post['photo_urls'] ? json_decode($post['photo_urls'], true) : null,
+                    'video_url' => $post['video_url'],
+                    'location' => $post['location'],
+                    'visibility' => $post['visibility'],
+                    // ENTERPRISE V7.0 (2025-11-30): Tagged users for @mention links
+                    'tagged_users' => $post['tagged_users'] ? json_decode($post['tagged_users'], true) : [],
+                    // Audio metadata (from audio_files LEFT JOIN)
+                    'audio_title' => $post['audio_title'] ?? null,
+                    'audio_description' => $post['audio_description'] ?? null,
+                    'audio_duration' => $post['audio_duration'] ?? null,
+                    'audio_photo_url' => $post['audio_photo_url'] ?? null,
+                    'audio_photo_thumbnail' => $post['audio_photo_thumbnail'] ?? null,
+                    // ENTERPRISE SECURITY: Don't expose CDN URL directly in feed
+                    // Frontend must call /api/audio/{id} to get signed URL for playback
+                    'audio_cdn_url' => null, // REMOVED: Security - use signed URL via API instead
+                    'emotion' => $emotionData, // Primary emotion (from emotions LEFT JOIN)
+                    'stats' => [
+                        // ENTERPRISE V11 (2025-12-11): ABSOLUTE VALUE OVERLAY for comments
+                        // Pattern: overlay ?? DB (if overlay exists, use it; else use DB value)
+                        'comments' => $commentAbsolutes[$postId] ?? (int) $post['comment_count'],
+                        // V5.3: shares removed - no sharing feature exists
+                        // ENTERPRISE V11 (2025-12-11): ABSOLUTE VALUE OVERLAY for listens
+                        // Pattern: overlay ?? DB (if overlay exists, use it; else use DB value)
+                        'listens' => $playAbsolutes[(int)($post['audio_file_id'] ?? 0)] ?? (int) ($post['audio_play_count'] ?? 0),
+                    ],
+                    // ENTERPRISE GALAXY: Alias for backwards compatibility with FeedManager.js
+                    // ENTERPRISE V11 (2025-12-11): Comments with ABSOLUTE overlay
+                    'comment_count' => $commentAbsolutes[$postId] ?? (int) $post['comment_count'],
+                    // ENTERPRISE V11 (2025-12-11): Listen count with ABSOLUTE overlay
+                    'listen_count' => $playAbsolutes[(int)($post['audio_file_id'] ?? 0)] ?? (int) ($post['audio_play_count'] ?? 0),
+                    // ENTERPRISE V8.1 (2025-12-05): Store DB base for fresh delta application
+                    // FeedPrecomputeService applies fresh overlay deltas at serving time
+                    'audio_play_count' => (int) ($post['audio_play_count'] ?? 0),
+                    // Emotional Reactions System V4 (10 emotions + overlay support)
+                    'reaction_stats' => $reactionStats, // {emotion_id: count} - overlay takes precedence
+                    'user_reaction' => $userReaction, // emotion_id or null - overlay takes precedence
+                    'total_reactions' => array_sum($reactionStats), // Calculate from merged stats
+                    'created_at' => $post['created_at'],
+                    'published_at' => $post['published_at'],
+                ];
+            }, $posts);
+
+            // V4: Filter out null entries (tombstoned posts)
+            $formattedPosts = array_values(array_filter($formattedPosts));
+
+            return [
+                'success' => true,
+                'posts' => $formattedPosts,
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'has_more' => count($posts) === $perPage,
+                ],
+            ];
+
+        } catch (\Exception $e) {
+            Logger::error('Failed to get feed', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'server_error',
+                'posts' => [],
+            ];
+        }
+    }
+
+    /**
+     * Get feed by user ID (INTERNAL - for pre-computation)
+     *
+     * ENTERPRISE GALAXY V8.0 (2025-12-01)
+     *
+     * Used by FeedPrecomputeService to pre-compute feeds for active users.
+     * Accepts user ID directly instead of UUID for efficiency.
+     *
+     * @param int $userId User ID (not UUID)
+     * @param int $limit Max posts to return
+     * @param int $offset Pagination offset
+     * @return array Array of formatted posts (just the posts array, no wrapper)
+     */
+    public function getFeedInternal(int $userId, int $limit = 50, int $offset = 0): array
+    {
+        if ($userId <= 0) {
+            return [];
+        }
+
+        try {
+            $posts = $this->repository->getSocialFeed($userId, $limit, $offset);
+
+            if (empty($posts)) {
+                return [];
+            }
+
+            // Apply all the same filters and overlays as getFeed()
+            // This ensures pre-computed feeds are identical to on-demand feeds
+
+            // Filter blocked users
+            $friendshipOverlay = FriendshipOverlayService::getInstance();
+            $blockedUserIds = [];
+            if ($friendshipOverlay->isAvailable()) {
+                $blockedUserIds = $friendshipOverlay->getBlockedUserIds($userId);
+            }
+            if (!empty($blockedUserIds)) {
+                $posts = array_values(array_filter($posts, function ($post) use ($blockedUserIds) {
+                    return !isset($blockedUserIds[(int) $post['user_id']]);
+                }));
+            }
+
+            // Filter hidden posts
+            $hiddenOverlay = HiddenPostsOverlayService::getInstance();
+            $hiddenPostIds = [];
+            if ($hiddenOverlay->isAvailable()) {
+                $hiddenPostIds = $hiddenOverlay->getHiddenPostIds($userId);
+            }
+            if (!empty($hiddenPostIds)) {
+                $posts = array_values(array_filter($posts, function ($post) use ($hiddenPostIds) {
+                    return !isset($hiddenPostIds[(int) $post['id']]);
+                }));
+            }
+
+            // ENTERPRISE V4.7 (2025-12-06): Filter posts from BANNED users
+            // Same logic as getFeed() - INSTANT effect on ban/unban
+            $bannedOverlay = BannedUsersOverlayService::getInstance();
+            if ($bannedOverlay->isAvailable()) {
+                $posts = $bannedOverlay->filterBannedUsersPosts($posts);
+            }
+
+            if (empty($posts)) {
+                return [];
+            }
+
+            // Load reaction stats
+            $postIds = array_map(fn ($post) => (int)$post['id'], $posts);
+            $bulkReactionStats = $this->reactionStats->getBulkPostReactionStats($postIds, $userId);
+
+            // Load overlays
+            $overlays = [];
+            if ($this->overlayLoader) {
+                $overlays = $this->overlayLoader->loadBatch($postIds, $userId);
+            }
+
+            // Load avatar overlays
+            $authorIds = array_unique(array_map(fn ($post) => (int)$post['user_id'], $posts));
+            $avatarOverlays = [];
+            $settingsOverlay = UserSettingsOverlayService::getInstance();
+            if ($settingsOverlay->isAvailable()) {
+                $avatarOverlays = $settingsOverlay->batchLoadAvatars($authorIds);
+            }
+
+            // V11: Load ABSOLUTE comment counts ("overlay wins" pattern)
+            $commentAbsolutes = [];
+            $overlayService = OverlayService::getInstance();
+            if ($overlayService->isAvailable()) {
+                $commentAbsolutes = $overlayService->getBatchCommentAbsolutes($postIds);
+            }
+
+            // V11: Load ABSOLUTE play counts ("overlay wins" pattern)
+            $audioFileIds = array_filter(array_map(fn($p) => (int)($p['audio_file_id'] ?? 0), $posts));
+            $playAbsolutes = [];
+            if ($overlayService->isAvailable() && !empty($audioFileIds)) {
+                $playAbsolutes = $overlayService->getBatchPlayAbsolutes($audioFileIds);
+            }
+
+            // Format posts (same logic as getFeed)
+            // V11: Uses ABSOLUTE values for play/comment counts (no more delta timing bugs!)
+            $formattedPosts = array_map(function ($post) use ($bulkReactionStats, $overlays, $avatarOverlays, $commentAbsolutes, $playAbsolutes) {
+                $postId = (int) $post['id'];
+                $overlay = $overlays[$postId] ?? null;
+
+                // Skip tombstoned posts
+                if ($overlay && $overlay['tombstone']) {
+                    return null;
+                }
+
+                // Reaction stats with overlay merge
+                $reactions = $bulkReactionStats[$postId] ?? ['total_reactions' => 0, 'top_emotions' => [], 'user_reaction' => null];
+                $reactionStats = [];
+                foreach ($reactions['top_emotions'] ?? [] as $emotion) {
+                    $reactionStats[$emotion['emotion_id']] = $emotion['count'];
+                }
+                if ($overlay && !empty($overlay['reactions'])) {
+                    $mergedStats = $reactionStats;
+                    foreach ($overlay['reactions'] as $emotionId => $overlayCount) {
+                        if ($overlayCount > 0) {
+                            $mergedStats[$emotionId] = $overlayCount;
+                        } else {
+                            unset($mergedStats[$emotionId]);
+                        }
+                    }
+                    $reactionStats = $mergedStats;
+                }
+
+                // User reaction with overlay priority
+                $userReaction = $reactions['user_reaction']['emotion_id'] ?? null;
+                if ($overlay && $overlay['user_reaction'] !== null) {
+                    $userReaction = $overlay['user_reaction'] === 0 ? null : $overlay['user_reaction'];
+                }
+
+                // ENTERPRISE V4: Apply avatar overlay (takes precedence over DB)
+                $authorId = (int) $post['user_id'];
+                $avatarUrl = $avatarOverlays[$authorId] ?? $post['avatar_url'] ?? '/assets/img/default-avatar.png';
+                if (!str_starts_with($avatarUrl, 'http') && !str_starts_with($avatarUrl, '/')) {
+                    // Local upload without prefix: add /storage/uploads/
+                    $avatarUrl = '/storage/uploads/' . $avatarUrl;
+                }
+
+                // ENTERPRISE V11 (2025-12-11): Calculate listen count with ABSOLUTE overlay
+                // Pattern: overlay ?? DB (if overlay exists, use it; else use DB value)
+                $audioFileId = (int)($post['audio_file_id'] ?? 0);
+                $listenCount = $playAbsolutes[$audioFileId] ?? (int)($post['audio_play_count'] ?? 0);
+
+                // Build emotion object (same as getFeed)
+                $emotionData = null;
+                if (!empty($post['emotion_id'])) {
+                    $emotionData = [
+                        'id' => (int) $post['emotion_id'],
+                        'name_it' => $post['emotion_name_it'] ?? null,
+                        'icon_emoji' => $post['emotion_icon_emoji'] ?? null,
+                        'color_hex' => $post['emotion_color_hex'] ?? null,
+                    ];
+                }
+
+                return [
+                    'id' => $postId,
+                    'uuid' => $post['uuid'],
+                    'author' => [
+                        'id' => $authorId,
+                        'uuid' => $post['author_uuid'] ?? $post['user_uuid'] ?? null,
+                        'nickname' => $post['nickname'],
+                        'avatar_url' => $avatarUrl,
+                    ],
+                    'post_type' => $post['post_type'],
+                    'content' => $post['content'],
+                    'audio_file_id' => $post['audio_file_id'] ? (int) $post['audio_file_id'] : null,
+                    'photo_urls' => $post['photo_urls'] ? json_decode($post['photo_urls'], true) : null,
+                    'video_url' => $post['video_url'] ?? null,
+                    'location' => $post['location'] ?? null,
+                    'visibility' => $post['visibility'],
+                    'tagged_users' => $post['tagged_users'] ? json_decode($post['tagged_users'], true) : [],
+                    // Audio metadata
+                    'audio_title' => $post['audio_title'] ?? null,
+                    'audio_description' => $post['audio_description'] ?? null,
+                    'audio_duration' => $post['audio_duration'] ?? null,
+                    'audio_photo_url' => $post['audio_photo_url'] ?? null,
+                    'audio_photo_thumbnail' => $post['audio_photo_thumbnail'] ?? null,
+                    'audio_cdn_url' => null, // Security - use signed URL via API
+                    'audio_file_size' => $post['audio_file_size'] ?? null,
+                    'audio_mime_type' => $post['audio_mime_type'] ?? null,
+                    // ENTERPRISE V8.0: emotion object (same structure as getFeed)
+                    'emotion' => $emotionData,
+                    // ENTERPRISE V11: stats object (same structure as getFeed for JS compatibility)
+                    'stats' => [
+                        'comments' => $commentAbsolutes[$postId] ?? (int)($post['comment_count'] ?? 0),
+                        // V5.3: shares removed - no sharing feature exists
+                        'listens' => $listenCount,
+                    ],
+                    // ENTERPRISE V11: Backwards compatibility aliases (same as getFeed)
+                    'comment_count' => $commentAbsolutes[$postId] ?? (int)($post['comment_count'] ?? 0),
+                    'listen_count' => $listenCount,
+                    // ENTERPRISE V8.1 (2025-12-05): Store DB base for fresh delta application
+                    // FeedPrecomputeService applies fresh overlay deltas at serving time
+                    'audio_play_count' => (int) ($post['audio_play_count'] ?? 0),
+                    // V5.3: share_count removed - no sharing feature exists
+                    // Reaction system
+                    'reaction_stats' => $reactionStats,
+                    'user_reaction' => $userReaction,
+                    'total_reactions' => array_sum($reactionStats),
+                    'created_at' => $post['created_at'],
+                    'published_at' => $post['published_at'],
+                ];
+            }, $posts);
+
+            return array_values(array_filter($formattedPosts));
+
+        } catch (\Exception $e) {
+            Logger::error('getFeedInternal failed', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Get audio post by ID
+     *
+     * ENTERPRISE FIX: Returns post data with audio_posts structure + audio_files data
+     * - Audio file data (file_path, cdn_url, duration, title) included from LEFT JOIN
+     *
+     * CRITICAL BUG FIX: Added file_path + cdn_url for AudioController::stream()
+     * Without these fields, streaming endpoint returns 500 error
+     *
+     * @param int $postId Post ID
+     * @param int $userId Current user ID (for liked status)
+     * @return array|null Post data
+     */
+    public function getPost(int $postId, string $userUuid): ?array
+    {
+        try {
+            // ENTERPRISE: Resolve UUID → ID (for legacy compatibility)
+            $userId = $this->resolveUuidToId($userUuid);
+            if (!$userId) {
+                return null;
+            }
+
+            $post = $this->repository->findById($postId);
+            if (!$post) {
+                return null;
+            }
+
+            // ENTERPRISE V6.4 (2025-11-30): CHECK TOMBSTONE FIRST - Post may be deleted but still in cache!
+            // Tombstone in overlay is the SOURCE OF TRUTH for deleted posts (immediate consistency)
+            $overlayService = OverlayService::getInstance();
+            if ($overlayService->isAvailable() && $overlayService->hasTombstone($postId)) {
+                Logger::overlay('debug', 'getPost: Post has tombstone (deleted), returning null', [
+                    'post_id' => $postId,
+                    'user_uuid' => $userUuid,
+                ]);
+                return null; // Post is deleted - don't show even if in cache
+            }
+
+            // ENTERPRISE V11 (2025-12-11): Load ABSOLUTE play count ("overlay wins" pattern)
+            // Note: $overlayService already initialized above for tombstone check
+            $playAbsolute = null;
+            $audioFileId = (int)($post['audio_file_id'] ?? 0);
+            if ($overlayService->isAvailable() && $audioFileId > 0) {
+                // V11: Get ABSOLUTE play count (null = use DB)
+                $playAbsolute = $overlayService->getPlayAbsolute($audioFileId);
+            }
+
+            // ENTERPRISE V11 (2025-12-11): Load ABSOLUTE comment count ("overlay wins" pattern)
+            $commentAbsolute = null;
+            if ($overlayService->isAvailable()) {
+                $commentAbsolute = $overlayService->getCommentAbsolute($postId);
+            }
+
+            // ENTERPRISE V6.3 (2025-11-30): Load reaction stats for lightbox display
+            // Uses same logic as getFeed() - DB stats + overlay merge
+            $bulkReactionStats = $this->reactionStats->getBulkPostReactionStats([$postId], $userId);
+            $reactions = $bulkReactionStats[$postId] ?? [
+                'total_reactions' => 0,
+                'top_emotions' => [],
+                'user_reaction' => null,
+            ];
+
+            // Transform reaction stats for frontend ReactionPicker
+            $reactionStats = [];
+            foreach ($reactions['top_emotions'] ?? [] as $emotion) {
+                $reactionStats[$emotion['emotion_id']] = $emotion['count'];
+            }
+            $userReaction = $reactions['user_reaction'];
+
+            // V6.3: Load overlay for real-time reaction updates
+            $overlays = [];
+            if ($this->overlayLoader) {
+                $overlays = $this->overlayLoader->loadBatch([$postId], $userId);
+            }
+            $overlay = $overlays[$postId] ?? null;
+
+            // V6.3: Merge overlay reactions (same V6.2 logic as feed)
+            // OVERLAY ALWAYS TAKES PRECEDENCE for emotions it tracks
+            if ($overlay && !empty($overlay['reactions'])) {
+                $mergedStats = $reactionStats;
+                foreach ($overlay['reactions'] as $emotionId => $overlayCount) {
+                    if ($overlayCount > 0) {
+                        $mergedStats[$emotionId] = $overlayCount;
+                    } else {
+                        unset($mergedStats[$emotionId]);
+                    }
+                }
+                $reactionStats = $mergedStats;
+
+                // Check user reaction in overlay
+                if (isset($overlay['user_emotion'])) {
+                    $userReaction = $overlay['user_emotion'] > 0 ? $overlay['user_emotion'] : null;
+                }
+            }
+
+            return [
+                'id' => (int) $post['id'],
+                'uuid' => $post['uuid'],
+                'user_id' => (int) $post['user_id'],
+                'user_uuid' => $post['user_uuid'] ?? null,  // ENTERPRISE: UUID in response
+                'author' => [
+                    'uuid' => $post['user_uuid'] ?? null,  // ENTERPRISE: UUID for profile link
+                    'nickname' => $post['nickname'],
+                    // ENTERPRISE V10.141: Normalize avatar URL using helper (database stores relative path)
+                    'avatar_url' => get_avatar_url($post['avatar_url'] ?? null),
+                ],
+                'post_type' => $post['post_type'],
+                'content' => $post['content'],
+                'audio_file_id' => $post['audio_file_id'] ? (int) $post['audio_file_id'] : null,
+                'photo_urls' => $post['photo_urls'] ? json_decode($post['photo_urls'], true) : null,
+                // ENTERPRISE V4.10: Add photo_url for lightbox compatibility (single photo from audio_files)
+                'photo_url' => $post['audio_photo_url'] ?? null,
+                'video_url' => $post['video_url'],
+                'location' => $post['location'],
+                'visibility' => $post['visibility'],
+                'moderation_status' => $post['moderation_status'],
+                'moderation_reason' => $post['moderation_reason'],
+                // CRITICAL FIX: Include audio_files data for streaming
+                'file_path' => $post['file_path'] ?? null,
+                'cdn_url' => $post['cdn_url'] ?? null,
+                'duration' => $post['duration'] ?? null,
+                'title' => $post['title'] ?? null,
+                'stats' => [
+                    // ENTERPRISE V11 (2025-12-11): ABSOLUTE VALUE OVERLAY for comments
+                    // Pattern: overlay ?? DB (if overlay exists, use it; else use DB value)
+                    'comments' => $commentAbsolute ?? (int) $post['comment_count'],
+                    // V5.3: shares removed - no sharing feature exists
+                    // ENTERPRISE V11 (2025-12-11): ABSOLUTE VALUE OVERLAY for listens
+                    // Pattern: overlay ?? DB (if overlay exists, use it; else use DB value)
+                    'listens' => $playAbsolute ?? (int) ($post['play_count'] ?? 0),
+                    'reports' => (int) $post['report_count'],
+                ],
+                // ENTERPRISE V11: Aliases for frontend compatibility (same as getFeed)
+                'comment_count' => $commentAbsolute ?? (int) $post['comment_count'],
+                'listen_count' => $playAbsolute ?? (int) ($post['play_count'] ?? 0),
+                // ENTERPRISE V6.3 (2025-11-30): Reaction stats for lightbox display
+                // Same format as getFeed() - {emotion_id: count}
+                'reaction_stats' => $reactionStats,
+                'user_reaction' => $userReaction,
+                'total_reactions' => array_sum($reactionStats),
+                'created_at' => $post['created_at'],
+                'published_at' => $post['published_at'],
+            ];
+
+        } catch (\Exception $e) {
+            Logger::error('Failed to get audio post', [
+                'post_id' => $postId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Track post listen (audio play / post open)
+     *
+     * ENTERPRISE V5.3: Renamed from trackView to trackListen - these are AUDIO files!
+     * Uses overlay system for high-concurrency listen tracking.
+     * play_count is stored in audio_files table.
+     *
+     * @param int $postId Post ID
+     * @param string $userUuid User UUID (for analytics)
+     * @return bool Success
+     */
+    public function trackListen(int $postId, string $userUuid): bool
+    {
+        try {
+            // ENTERPRISE: Resolve UUID → ID (for analytics only, not required for listen increment)
+            $userId = $this->resolveUuidToId($userUuid);
+
+            // ENTERPRISE V5.3: Listen tracking via overlay system (play_count in audio_files)
+            // The overlay system handles the increment - see trackPlay() for main flow
+            $result = $this->repository->incrementListenCount($postId);
+
+            if ($result) {
+                Logger::info('Post listen tracked', [
+                    'post_id' => $postId,
+                    'user_uuid' => $userUuid,
+                    'user_id' => $userId ?: null,
+                ]);
+            }
+
+            return $result;
+
+        } catch (\Exception $e) {
+            Logger::error('Failed to track listen', [
+                'post_id' => $postId,
+                'user_uuid' => $userUuid,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * @deprecated Use trackListen() instead - these are AUDIO files, not videos!
+     */
+    public function trackView(int $postId, string $userUuid): bool
+    {
+        return $this->trackListen($postId, $userUuid);
+    }
+
+    /**
+     * Delete audio post
+     *
+     * @param int $postId Post ID
+     * @param int $userId User ID (ownership check)
+     * @return array Result
+     */
+    public function deletePost(int $postId, string $userUuid): array
+    {
+        try {
+            // ENTERPRISE: Resolve UUID → ID
+            $userId = $this->resolveUuidToId($userUuid);
+            if (!$userId) {
+                return [
+                    'success' => false,
+                    'error' => 'invalid_user',
+                    'message' => 'Utente non valido',
+                ];
+            }
+
+            // Check ownership
+            if (!$this->repository->isOwner($postId, $userId)) {
+                return [
+                    'success' => false,
+                    'error' => 'unauthorized',
+                    'message' => 'Non sei autorizzato a eliminare questo post',
+                ];
+            }
+
+            // ENTERPRISE GALAXY: Get audio file info BEFORE deletion for cache invalidation
+            $audioInfo = $this->repository->getAudioFileInfo($postId);
+            $audioUuid = $audioInfo['uuid'] ?? null;
+            $cdnUrl = $audioInfo['cdn_url'] ?? null;
+
+            $result = $this->repository->delete($postId);
+
+            if ($result) {
+                // ENTERPRISE V4: Set tombstone in overlay for immediate feed visibility
+                if ($this->overlayService) {
+                    $this->overlayService->setTombstone($postId);
+                }
+
+                // ENTERPRISE GALAXY: Invalidate ALL cache layers (signed URLs, feed cache, etc.)
+                if ($this->cacheInvalidator && $audioUuid) {
+                    $this->cacheInvalidator->invalidateAudio(
+                        $postId,
+                        $audioUuid,
+                        $cdnUrl,
+                        $userId,
+                        true // setTombstone
+                    );
+                }
+
+                // ENTERPRISE GALAXY V6: Notify clients to invalidate browser cache via WebSocket
+                // WebSocketPublisher uses STATIC methods, not getInstance()
+                try {
+                    WebSocketPublisher::publishGlobal('cache_invalidation', [
+                        'type' => 'audio',
+                        'action' => 'delete',
+                        'post_id' => $postId,
+                        'audio_uuid' => $audioUuid,
+                        'cdn_url' => $cdnUrl,
+                        'user_uuid' => $userUuid,
+                        'timestamp' => microtime(true),
+                    ]);
+                } catch (\Exception $e) {
+                    // Non-critical, continue (cache invalidation is best-effort)
+                    Logger::debug('WebSocket broadcast failed during audio delete', [
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                // ENTERPRISE V6.4 (2025-11-30): Soft-delete notifications referencing this post
+                // This prevents showing notifications for deleted posts in notification panel
+                // FIX V10.1: Only read_at exists (no updated_at column in notifications table)
+                try {
+                    $db = db();
+                    $deletedNotifications = $db->execute(
+                        "UPDATE notifications
+                         SET read_at = NOW()
+                         WHERE (target_type = 'post' AND target_id = :post_id)
+                            OR (target_type = 'comment' AND data->>'post_id' = :post_id_str)",
+                        ['post_id' => $postId, 'post_id_str' => (string)$postId],
+                        ['invalidate_cache' => ['notifications:*']]
+                    );
+                    Logger::overlay('debug', 'Notifications marked as read for deleted post', [
+                        'post_id' => $postId,
+                        'affected_rows' => $deletedNotifications,
+                    ]);
+                } catch (\Exception $e) {
+                    // Non-critical - notifications will just show post not found when clicked
+                    Logger::warning('Failed to update notifications for deleted post', [
+                        'post_id' => $postId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                // ENTERPRISE GALAXY V8.0 (2025-12-01): Feed Invalidation
+                // Invalidates pre-computed feeds for all followers when post is deleted
+                // This triggers background re-computation for active followers
+                try {
+                    $invalidationService = FeedInvalidationService::getInstance();
+                    $invalidationService->onPostDeleted($userId, $postId);
+                } catch (\Exception $e) {
+                    // Non-critical, feed will be refreshed on next request
+                    Logger::warning('Feed invalidation failed on post delete', [
+                        'user_id' => $userId,
+                        'post_id' => $postId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                Logger::info('Audio post deleted', [
+                    'post_id' => $postId,
+                    'user_uuid' => $userUuid,
+                    'audio_uuid' => $audioUuid,
+                    'tombstone_set' => true,
+                    'cache_invalidated' => true,
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => 'Post eliminato con successo',
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => 'deletion_failed',
+                'message' => 'Errore durante l\'eliminazione',
+            ];
+
+        } catch (\Exception $e) {
+            Logger::error('Failed to delete audio post', [
+                'post_id' => $postId,
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'server_error',
+                'message' => 'Errore del server',
+            ];
+        }
+    }
+
+    /**
+     * Get user's posts
+     *
+     * @param int $userId User ID
+     * @param int $page Page number
+     * @param int $perPage Posts per page
+     * @return array Posts
+     */
+    public function getUserPosts(string $userUuid, int $page = 1, int $perPage = 20): array
+    {
+        try {
+            // ENTERPRISE: Resolve UUID → ID
+            $userId = $this->resolveUuidToId($userUuid);
+            if (!$userId) {
+                return ['success' => false, 'posts' => [], 'error' => 'invalid_user'];
+            }
+
+            $offset = ($page - 1) * $perPage;
+            $posts = $this->repository->getUserPosts($userId, $perPage, $offset);
+
+            return [
+                'success' => true,
+                'posts' => $posts,
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'has_more' => count($posts) === $perPage,
+                ],
+            ];
+
+        } catch (\Exception $e) {
+            Logger::error('Failed to get user posts', [
+                'user_uuid' => $userUuid,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'server_error',
+                'posts' => [],
+            ];
+        }
+    }
+
+    /**
+     * Check rate limit status for user
+     *
+     * @param string $userUuid User UUID
+     * @return array Rate limit info
+     */
+    public function getRateLimitStatus(string $userUuid): array
+    {
+        // ENTERPRISE: Resolve UUID → ID (rate limiter uses user_id)
+        $userId = $this->resolveUuidToId($userUuid);
+        if (!$userId) {
+            return [
+                'can_upload' => false,
+                'uploads_today' => 0,
+                'max_daily' => 10,
+                'retry_after' => null,
+                'cooldown_minutes' => 5,
+                'error' => 'invalid_user',
+            ];
+        }
+
+        $info = $this->rateLimiter->getRateLimitInfo($userId, 'audio_upload');
+
+        return [
+            'can_upload' => $this->rateLimiter->checkLimit($userId, 'audio_upload'),
+            'uploads_today' => $info['current_count'] ?? 0,
+            'max_daily' => 10,
+            'retry_after' => $info['retry_after'] ?? null,
+            'cooldown_minutes' => 5,
+        ];
+    }
+
+    /**
+     * TRACK AUDIO PLAY - Increment play_count + update last_played_at
+     *
+     * ENTERPRISE V5.3: play_count is in audio_files table (storage layer)
+     * Overlay system handles increment, flush syncs to DB.
+     * - play_count: Counter for audio plays (in audio_files)
+     * - last_played_at: Timestamp for trending/hot algorithm (in audio_posts)
+     *
+     * PERFORMANCE: Direct UPDATE query for last_played_at (~1ms)
+     * SCALABILITY: Works with 100k+ concurrent users (overlay + batch flush)
+     * CACHING: Overlay system handles cache consistency
+     * ANALYTICS: Optional async tracking to analytics DB
+     *
+     * @param string $postId Audio POST ID (NOT audio_file_id!)
+     * @param string|null $userUuid User UUID (optional, for analytics)
+     * @return bool Success
+     */
+    public function trackPlay(string $postId, ?string $userUuid = null): bool
+    {
+        try {
+            $db = db();
+
+            // ENTERPRISE: Resolve UUID → ID if provided (for analytics only)
+            $userId = null;
+            if ($userUuid) {
+                $userId = $this->resolveUuidToId($userUuid);
+            }
+
+            // ENTERPRISE V6 (2025-11-29): GENERATIONAL OVERLAY for view tracking
+            // Uses recordView() with userId and timestamp for generation-based delta calculation.
+            // This solves the flush-reset bug where reset after flush caused wrong counts.
+            $overlayService = \Need2Talk\Services\Cache\OverlayService::getInstance();
+            if ($overlayService->isAvailable()) {
+                // V6: Record view event with userId (or 0 if anonymous)
+                $overlayService->recordView((int)$postId, $userId ?? 0);
+            }
+
+            // Update last_played_at only (play_count handled by overlay flush!)
+            // PostgreSQL syntax: no LIMIT in UPDATE
+            $updated = $db->execute(
+                "UPDATE audio_posts
+                 SET last_played_at = NOW()
+                 WHERE id = :post_id
+                   AND post_type = 'audio'
+                   AND deleted_at IS NULL",
+                ['post_id' => $postId]
+            );
+
+            if ($updated) {
+                // ENTERPRISE V6: NO cache invalidation - overlay handles play count
+
+                // OPTIONAL: Track play event per analytics (async)
+                if ($userUuid && $userId) {
+                    // TODO: Enqueue analytics event to Redis queue
+                    // format: { type: 'audio_play', post_id, user_uuid, timestamp }
+                    Logger::debug('Audio play tracked', [
+                        'post_id' => $postId,
+                        'user_uuid' => $userUuid,
+                        'user_id' => $userId,
+                    ]);
+                }
+
+                return true;
+            }
+
+            return false;
+
+        } catch (\Exception $e) {
+            Logger::error('Failed to track audio play', [
+                'post_id' => $postId,
+                'user_uuid' => $userUuid ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            // Non fallire lo streaming se tracking fallisce (fail gracefully)
+            return false;
+        }
+    }
+
+    /**
+     * ENTERPRISE FIX #1: Track emotion selection in emotion_tracking table
+     *
+     * Purpose: Analytics per capire quali emozioni vengono scelte più spesso
+     * Performance: Single INSERT, <2ms con 100M+ records
+     *
+     * @param int $userId User ID
+     * @param int $emotionId Emotion ID (1-10)
+     * @return bool Success
+     */
+    private function trackEmotion(int $userId, int $emotionId): bool
+    {
+        try {
+            $sql = "INSERT INTO emotion_tracking (
+                user_id,
+                emotion_id,
+                tracked_at,
+                device_type,
+                user_agent
+            ) VALUES (
+                :user_id,
+                :emotion_id,
+                NOW(),
+                :device_type,
+                :user_agent
+            )";
+
+            $pdo = db_pdo();
+            $stmt = $pdo->prepare($sql);
+
+            $stmt->execute([
+                'user_id' => $userId,
+                'emotion_id' => $emotionId,
+                'device_type' => $this->detectDeviceType(),
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+            ]);
+
+            return true;
+
+        } catch (\PDOException $e) {
+            // Non bloccare upload se tracking fallisce
+            Logger::warning('Failed to track emotion', [
+                'user_id' => $userId,
+                'emotion_id' => $emotionId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Detect device type from user agent
+     *
+     * @return string Device type (mobile, tablet, desktop)
+     */
+    private function detectDeviceType(): string
+    {
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+        if (preg_match('/mobile|android|iphone|ipod|blackberry|iemobile|opera mini/i', $userAgent)) {
+            return 'mobile';
+        }
+
+        if (preg_match('/tablet|ipad/i', $userAgent)) {
+            return 'tablet';
+        }
+
+        return 'desktop';
+    }
+
+    /**
+     * Send @mention notifications for audio post
+     *
+     * ENTERPRISE V4 (2025-11-30): Real-time WebSocket + DB notifications for tagged users
+     * - Notifies each mentioned user via NotificationService (WebSocket + DB)
+     * - Respects user notification preferences (notify_mentions setting)
+     * - Uses TYPE_MENTIONED with TARGET_POST target type
+     *
+     * @param int $postId Audio post ID
+     * @param int $authorId Author user ID (the person who created the post)
+     * @param array $mentionedUsers Array of mentioned users [['uuid' => ..., 'nickname' => ...], ...]
+     * @param string $description Post description (for notification preview)
+     * @return void
+     */
+    private function sendMentionNotifications(
+        int $postId,
+        int $authorId,
+        array $mentionedUsers,
+        string $description
+    ): void {
+        // Skip if no mentions
+        if (empty($mentionedUsers)) {
+            return;
+        }
+
+        try {
+            $notificationService = NotificationService::getInstance();
+            $contextPreview = mb_substr($description, 0, 100);
+
+            foreach ($mentionedUsers as $mentioned) {
+                // Resolve UUID → ID for the mentioned user
+                $mentionedUserUuid = $mentioned['uuid'] ?? '';
+                if (empty($mentionedUserUuid)) {
+                    continue;
+                }
+
+                // Resolve mentioned user's UUID to ID
+                $mentionedUserId = $this->resolveUuidToId($mentionedUserUuid);
+                if (!$mentionedUserId || $mentionedUserId === $authorId) {
+                    // Skip if user not found or self-mention
+                    continue;
+                }
+
+                // Send notification via NotificationService (WebSocket + DB)
+                // Uses TYPE_MENTIONED with TARGET_POST for post mentions
+                $notificationService->notifyMentioned(
+                    $mentionedUserId,       // User to notify
+                    $authorId,              // Actor who triggered notification
+                    NotificationService::TARGET_POST,  // Target type: post (not comment)
+                    $postId,                // Target ID: the audio post
+                    $contextPreview         // Preview text from description
+                );
+
+                Logger::websocket('info', 'Mention notification sent for post', [
+                    'post_id' => $postId,
+                    'mentioned_user_id' => $mentionedUserId,
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            // Notification failure should not break post creation
+            Logger::websocket('warning', 'AudioPostService: Failed to send mention notifications', [
+                'post_id' => $postId,
+                'author_id' => $authorId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Update audio post privacy
+     *
+     * ENTERPRISE GALAXY (2025-11-21): Privacy update for AudioDayModal
+     * Updates both audio_posts.visibility AND audio_files.visibility
+     *
+     * @param int $postId Audio post ID
+     * @param string $userUuid User UUID (ownership check)
+     * @param string $visibility New visibility level (private, friends, friends_of_friends, public)
+     * @return array Result with success/error
+     */
+    public function updatePrivacy(int $postId, string $userUuid, string $visibility): array
+    {
+        try {
+            // ENTERPRISE: Resolve UUID → ID
+            $userId = $this->resolveUuidToId($userUuid);
+            if (!$userId) {
+                return [
+                    'success' => false,
+                    'error' => 'invalid_user',
+                    'message' => 'Utente non valido',
+                ];
+            }
+
+            // Check ownership
+            if (!$this->repository->isOwner($postId, $userId)) {
+                return [
+                    'success' => false,
+                    'error' => 'unauthorized',
+                    'message' => 'Non sei autorizzato a modificare questo post',
+                ];
+            }
+
+            // Validate visibility value (ENUM constraint)
+            $allowedValues = ['private', 'friends', 'friends_of_friends', 'public'];
+            if (!in_array($visibility, $allowedValues, true)) {
+                return [
+                    'success' => false,
+                    'error' => 'invalid_visibility',
+                    'message' => 'Valore visibility non valido',
+                ];
+            }
+
+            $db = db();
+
+            // ENTERPRISE: Update both audio_posts AND audio_files visibility in transaction
+            // Reason: Both tables have visibility field, must be consistent
+            $db->beginTransaction(30);
+
+            try {
+                // Step 1: Update audio_posts.visibility (PostgreSQL syntax)
+                // ENTERPRISE V4 (2025-11-28): NO invalidate_cache - handled by targeted pattern deletion below
+                $db->execute(
+                    "UPDATE audio_posts
+                     SET visibility = :visibility,
+                         updated_at = NOW()
+                     WHERE id = :post_id
+                       AND deleted_at IS NULL",
+                    [
+                        'visibility' => $visibility,
+                        'post_id' => $postId,
+                    ]
+                );
+
+                // Step 2: Update audio_files.visibility using subquery (PostgreSQL syntax)
+                // PostgreSQL doesn't support UPDATE...JOIN, use subquery instead
+                // ENTERPRISE V4 (2025-11-28): NO invalidate_cache - handled by targeted pattern deletion below
+                $db->execute(
+                    "UPDATE audio_files
+                     SET visibility = :visibility,
+                         updated_at = NOW()
+                     WHERE id = (
+                         SELECT audio_file_id FROM audio_posts
+                         WHERE id = :post_id AND deleted_at IS NULL
+                     )
+                     AND deleted_at IS NULL",
+                    [
+                        'visibility' => $visibility,
+                        'post_id' => $postId,
+                    ]
+                );
+
+                $db->commit();
+
+                // ENTERPRISE V11.6: Author sees changes immediately (30 sec bypass)
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    $_SESSION['_user_cache_bypass_until'] = time() + 30;
+                }
+
+                // ENTERPRISE: Invalidate author's specific cache patterns via CacheManager
+                $cache = db()->getCache();
+                if ($cache) {
+                    $cache->deleteByPattern("user:{$userId}:*");
+                }
+
+                // ENTERPRISE GALAXY: Get audio info for full cache invalidation
+                $audioInfo = $this->repository->getAudioFileInfo($postId);
+                $audioUuid = $audioInfo['uuid'] ?? null;
+                $cdnUrl = $audioInfo['cdn_url'] ?? null;
+
+                // ENTERPRISE GALAXY: Invalidate ALL cache layers (SignedUrls + Feed + Browser)
+                if ($this->cacheInvalidator && $audioUuid) {
+                    $this->cacheInvalidator->invalidateAudio(
+                        $postId,
+                        $audioUuid,
+                        $cdnUrl,
+                        $userId,
+                        false // No tombstone for privacy change
+                    );
+                }
+
+                // ENTERPRISE GALAXY: Broadcast cache invalidation to ALL connected clients
+                try {
+                    // WebSocketPublisher is a STATIC class - use ::publish() directly
+                    WebSocketPublisher::publish('cache:invalidate', 'privacy_change', [
+                        'type' => 'audio',
+                        'post_id' => $postId,
+                        'audio_uuid' => $audioUuid,
+                        'cdn_url' => $cdnUrl,
+                        'user_uuid' => $userUuid,
+                        'visibility' => $visibility,
+                    ]);
+                } catch (\Throwable $e) {
+                    // Catch Throwable to handle any error gracefully
+                    Logger::debug('WebSocket broadcast failed during privacy update', [
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                Logger::info('Audio privacy updated', [
+                    'post_id' => $postId,
+                    'user_uuid' => $userUuid,
+                    'audio_uuid' => $audioUuid,
+                    'new_visibility' => $visibility,
+                    'cache_invalidated' => true,
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => 'Privacy aggiornata con successo',
+                    'visibility' => $visibility,
+                ];
+
+            } catch (\Exception $e) {
+                $db->rollback();
+                throw $e;
+            }
+
+        } catch (\Exception $e) {
+            Logger::error('Failed to update audio privacy', [
+                'post_id' => $postId,
+                'user_uuid' => $userUuid,
+                'visibility' => $visibility,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'server_error',
+                'message' => 'Errore durante l\'aggiornamento della privacy',
+            ];
+        }
+    }
+
+    /**
+     * Update audio post content (title + description)
+     *
+     * ENTERPRISE GALAXY (2025-11-21): Content update for AudioDayModal
+     * Updates audio_files.title + audio_posts.content in transaction
+     *
+     * @param int $postId Audio post ID
+     * @param string $userUuid User UUID (ownership check)
+     * @param array $data Data to update (title, content)
+     * @return array Result with success/error
+     */
+    public function updatePost(int $postId, string $userUuid, array $data): array
+    {
+        try {
+            // ENTERPRISE: Resolve UUID → ID
+            $userId = $this->resolveUuidToId($userUuid);
+            if (!$userId) {
+                return [
+                    'success' => false,
+                    'error' => 'invalid_user',
+                    'message' => 'Utente non valido',
+                ];
+            }
+
+            // Check ownership
+            if (!$this->repository->isOwner($postId, $userId)) {
+                return [
+                    'success' => false,
+                    'error' => 'unauthorized',
+                    'message' => 'Non sei autorizzato a modificare questo post',
+                ];
+            }
+
+            // At least one field must be provided
+            if (!isset($data['title']) && !isset($data['content'])) {
+                return [
+                    'success' => false,
+                    'error' => 'missing_fields',
+                    'message' => 'Fornisci almeno un campo (title o content)',
+                ];
+            }
+
+            $db = db();
+
+            // ENTERPRISE: Update audio_files.title + audio_posts.content in transaction
+            // Reason: Title stored in audio_files, content stored in audio_posts
+            $db->beginTransaction(30);
+
+            try {
+                // Step 1: Update audio_files.title if provided (PostgreSQL syntax)
+                // PostgreSQL doesn't support UPDATE...JOIN, use subquery instead
+                // ENTERPRISE V4 (2025-11-28): NO invalidate_cache - handled by targeted pattern deletion below
+                if (isset($data['title'])) {
+                    $db->execute(
+                        "UPDATE audio_files
+                         SET title = :title,
+                             updated_at = NOW()
+                         WHERE id = (
+                             SELECT audio_file_id FROM audio_posts
+                             WHERE id = :post_id AND deleted_at IS NULL
+                         )
+                         AND deleted_at IS NULL",
+                        [
+                            'title' => $data['title'],
+                            'post_id' => $postId,
+                        ]
+                    );
+                }
+
+                // Step 2: Update audio_posts.content if provided (PostgreSQL syntax)
+                // ENTERPRISE V4 (2025-11-28): NO invalidate_cache - handled by targeted pattern deletion below
+                if (isset($data['content'])) {
+                    $db->execute(
+                        "UPDATE audio_posts
+                         SET content = :content,
+                             updated_at = NOW()
+                         WHERE id = :post_id
+                           AND deleted_at IS NULL",
+                        [
+                            'content' => $data['content'],
+                            'post_id' => $postId,
+                        ]
+                    );
+                }
+
+                $db->commit();
+
+                // ENTERPRISE V11.6: Author sees update immediately (30 sec bypass)
+                // Other users see update when their feed cache expires (eventual consistency)
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    $_SESSION['_user_cache_bypass_until'] = time() + 30;
+                }
+
+                // ENTERPRISE: Invalidate author's specific cache patterns via CacheManager
+                // Uses multi-level cache system (L1 + L2 + L3) with pattern matching
+                $cache = db()->getCache();
+                if ($cache) {
+                    $cache->deleteByPattern("user:{$userId}:*");
+                }
+
+                // ENTERPRISE: WebSocket broadcast to followers for real-time cache invalidation
+                // Followers receive signal → invalidate their local cache for this post → see fresh data
+                WebSocketPublisher::publishToFollowers($userUuid, 'post_updated', [
+                    'post_id' => $postId,
+                    'action' => 'content_update',
+                ]);
+
+                Logger::info('Audio post updated', [
+                    'post_id' => $postId,
+                    'user_uuid' => $userUuid,
+                    'updated_fields' => array_keys($data),
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => 'Post aggiornato con successo',
+                    'updated_fields' => array_keys($data),
+                ];
+
+            } catch (\Exception $e) {
+                $db->rollback();
+                throw $e;
+            }
+
+        } catch (\Exception $e) {
+            Logger::error('Failed to update audio post', [
+                'post_id' => $postId,
+                'user_uuid' => $userUuid,
+                'data' => $data,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'server_error',
+                'message' => 'Errore durante l\'aggiornamento del post',
+            ];
+        }
+    }
+
+    /**
+     * Resolve UUID to user ID (ENTERPRISE UUID helper)
+     *
+     * @param string $uuid User UUID
+     * @return int|false User ID or false if not found
+     */
+    private function resolveUuidToId(string $uuid): int|false
+    {
+        $db = db();
+
+        $result = $db->findOne(
+            "SELECT id FROM users WHERE uuid = ?",
+            [$uuid],
+            ['cache' => true, 'cache_ttl' => 'medium']
+        );
+
+        return $result ? (int) $result['id'] : false;
+    }
+
+    /**
+     * Apply reaction overlay to pre-computed feed
+     *
+     * ENTERPRISE V8.1 (2025-12-06)
+     *
+     * Pre-computed feeds may have stale reaction data. This method applies
+     * the real-time overlay to update user_reaction and reaction_stats.
+     *
+     * @param array $posts Pre-computed posts array
+     * @param int $userId Current user ID
+     * @return array Posts with updated reaction data
+     */
+    private function applyReactionOverlayToFeed(array $posts, int $userId): array
+    {
+        if (empty($posts)) {
+            return $posts;
+        }
+
+        // Get post IDs
+        $postIds = array_filter(array_map(fn($p) => (int)($p['id'] ?? 0), $posts));
+        if (empty($postIds)) {
+            return $posts;
+        }
+
+        // Load overlays via Redis pipeline
+        $overlays = [];
+        if ($this->overlayLoader) {
+            $overlays = $this->overlayLoader->loadBatch($postIds, $userId);
+        }
+
+        // Load DB reaction stats (includes user_reaction)
+        $bulkReactionStats = $this->reactionStats->getBulkPostReactionStats($postIds, $userId);
+
+        // ENTERPRISE V11 (2025-12-11): Load ABSOLUTE comment counts ("overlay wins" pattern)
+        // If overlay exists, use it; if null, keep pre-computed value
+        $commentAbsolutes = [];
+        $overlayService = OverlayService::getInstance();
+        if ($overlayService->isAvailable()) {
+            $commentAbsolutes = $overlayService->getBatchCommentAbsolutes($postIds);
+        }
+
+        // ENTERPRISE V11 (2025-12-11): Load ABSOLUTE play counts ("overlay wins" pattern)
+        $audioFileIds = array_filter(array_map(fn($p) => (int)($p['audio_file_id'] ?? 0), $posts));
+        $playAbsolutes = [];
+        if ($overlayService->isAvailable() && !empty($audioFileIds)) {
+            $playAbsolutes = $overlayService->getBatchPlayAbsolutes($audioFileIds);
+        }
+
+        // Apply overlays to each post
+        return array_map(function ($post) use ($overlays, $bulkReactionStats, $commentAbsolutes, $playAbsolutes) {
+            $postId = (int)($post['id'] ?? 0);
+            if (!$postId) {
+                return $post;
+            }
+
+            $overlay = $overlays[$postId] ?? null;
+            $dbReactions = $bulkReactionStats[$postId] ?? [
+                'total_reactions' => 0,
+                'top_emotions' => [],
+                'user_reaction' => null,
+            ];
+
+            // Build reaction stats from DB
+            $reactionStats = [];
+            foreach ($dbReactions['top_emotions'] ?? [] as $emotion) {
+                $reactionStats[$emotion['emotion_id']] = $emotion['count'];
+            }
+
+            // Merge overlay reaction counts (overlay takes precedence)
+            if ($overlay && !empty($overlay['reactions'])) {
+                foreach ($overlay['reactions'] as $emotionId => $overlayCount) {
+                    if ($overlayCount > 0) {
+                        $reactionStats[$emotionId] = $overlayCount;
+                    } else {
+                        unset($reactionStats[$emotionId]);
+                    }
+                }
+            }
+
+            // User reaction: DB first, then overlay takes precedence
+            $userReaction = $dbReactions['user_reaction']['emotion_id'] ?? null;
+            if ($overlay && $overlay['user_reaction'] !== null) {
+                $userReaction = $overlay['user_reaction'] === 0 ? null : $overlay['user_reaction'];
+            }
+
+            // Update post with real-time data
+            $post['reaction_stats'] = $reactionStats;
+            $post['user_reaction'] = $userReaction;
+            $post['total_reactions'] = array_sum($reactionStats);
+
+            // ENTERPRISE V11 (2025-12-11): Apply ABSOLUTE comment count ("overlay wins")
+            // If overlay exists (not null), use it; otherwise keep pre-computed value
+            $commentAbsolute = $commentAbsolutes[$postId] ?? null;
+            if ($commentAbsolute !== null) {
+                $post['comment_count'] = $commentAbsolute;
+                if (isset($post['stats'])) {
+                    $post['stats']['comments'] = $commentAbsolute;
+                }
+            }
+
+            // ENTERPRISE V11 (2025-12-11): Apply ABSOLUTE play count ("overlay wins")
+            // If overlay exists (not null), use it; otherwise keep pre-computed value
+            $audioFileId = (int)($post['audio_file_id'] ?? 0);
+            $playAbsolute = $playAbsolutes[$audioFileId] ?? null;
+            if ($playAbsolute !== null) {
+                $post['listen_count'] = $playAbsolute;
+                $post['play_count'] = $playAbsolute;
+                if (isset($post['stats'])) {
+                    $post['stats']['listens'] = $playAbsolute;
+                }
+            }
+
+            return $post;
+        }, $posts);
+    }
+}

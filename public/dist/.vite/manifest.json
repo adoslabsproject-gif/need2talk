@@ -1,0 +1,16 @@
+{
+  "src/js/charts.js": {
+    "file": "charts.CorHtGBV.js",
+    "name": "charts",
+    "src": "src/js/charts.js",
+    "isEntry": true
+  },
+  "src/tailwind.css": {
+    "file": "app.CX9ZipEU.css",
+    "src": "src/tailwind.css",
+    "isEntry": true,
+    "names": [
+      "app.css"
+    ]
+  }
+}

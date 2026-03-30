@@ -1,0 +1,451 @@
+/**
+ * Journal Timeline CSS - Enterprise Galaxy (Psychology-Optimized)
+ *
+ * Design Principles:
+ * - Compassionate, non-judgmental aesthetics
+ * - Visual hierarchy for emotion recognition
+ * - Gentle color transitions (no harsh contrasts)
+ * - Memory anchor emphasis (photos, icons, titles)
+ * - Clear encryption/privacy indicators
+ * - Micro-interactions for engagement
+ * - Mobile-first responsive design
+ *
+ * @package need2talk/Lightning
+ * @version 1.0.0
+ * @author Claude Code (AI-Orchestrated Development)
+ */
+
+/* =============================================================================
+   Timeline Container
+   ENTERPRISE: Removed max-width to allow fluid expansion in grid layout.
+   The parent .journal-timeline-layout grid controls proportions.
+   Timeline takes ALL available space from 1fr column.
+   ============================================================================= */
+
+#journal-timeline-container {
+    /* ENTERPRISE: No max-width - fluid expansion within grid */
+    /* Parent grid: sidebar (300px) | timeline (1fr = remaining space) */
+    width: 100%;
+}
+
+/* =============================================================================
+   Timeline Header
+   ============================================================================= */
+
+.timeline-header {
+    animation: fadeInDown 0.5s ease-out;
+}
+
+/* =============================================================================
+   Time Group (Day Grouping)
+   ============================================================================= */
+
+.time-group {
+    margin-bottom: 2rem;
+}
+
+/* =============================================================================
+   Entry Card (Individual Journal Entry)
+   ============================================================================= */
+
+.entry-card {
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.5), rgba(17, 24, 39, 0.8));
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 16px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    animation: fadeInUp 0.4s ease-out;
+}
+
+.entry-card:hover {
+    border-color: rgba(139, 92, 246, 0.4);
+    box-shadow: 0 8px 32px rgba(139, 92, 246, 0.15);
+    transform: translateY(-2px);
+}
+
+/* =============================================================================
+   Entry Header (Emotion + Intensity)
+   ============================================================================= */
+
+.entry-header {
+    margin-bottom: 1rem;
+}
+
+/* Emotion Indicator (Icon with colored background) */
+.emotion-indicator {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.entry-card:hover .emotion-indicator {
+    transform: scale(1.1);
+}
+
+/* Intensity Glow Effects (Psychology: Visual intensity perception) */
+.intensity-low {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+.intensity-medium {
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+}
+
+.intensity-high {
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 35px rgba(239, 68, 68, 0.7);
+    }
+}
+
+/* Intensity Bar (Visual indicator) */
+.intensity-bar {
+    transition: all 0.2s ease;
+}
+
+/* Status Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-encrypted {
+    background: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.badge-shared {
+    background: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-public {
+    background: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-private {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-friends {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* =============================================================================
+   Entry Content (Title, Description, Text, Photo, Audio)
+   ============================================================================= */
+
+.entry-content {
+    margin-top: 1rem;
+}
+
+/* Photo (Visual Memory Anchor) */
+.entry-photo {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    border: 2px solid rgba(139, 92, 246, 0.2);
+}
+
+.entry-photo img {
+    transition: transform 0.3s ease;
+}
+
+.entry-photo img:hover {
+    transform: scale(1.05);
+}
+
+/* Expanded photo view */
+.entry-photo-expanded {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 9999 !important;
+    max-width: 90vw !important;
+    max-height: 90vh !important;
+    width: auto !important;
+    height: auto !important;
+    box-shadow: 0 0 100px rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Title (Semantic Memory Anchor) */
+.entry-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+/* Description (Context Reconstruction Aid) */
+.entry-description {
+    color: #d1d5db;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 0.75rem;
+}
+
+/* Text Content (Free-form Emotional Expression) */
+.entry-text {
+    padding: 1rem;
+    background: rgba(17, 24, 39, 0.6);
+    border-radius: 8px;
+    border-left: 3px solid rgba(139, 92, 246, 0.5);
+}
+
+/* =============================================================================
+   Audio Player
+   ============================================================================= */
+
+/* Encrypted Audio Player */
+.audio-player-encrypted {
+    margin-top: 1rem;
+}
+
+.play-encrypted-audio-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.play-encrypted-audio-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s ease;
+}
+
+.play-encrypted-audio-btn:hover::before {
+    left: 100%;
+}
+
+/* Public Audio Player */
+.audio-player-public audio {
+    width: 100%;
+    border-radius: 8px;
+}
+
+/* =============================================================================
+   Entry Actions (Share/Unshare Buttons)
+   ============================================================================= */
+
+.entry-actions {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(139, 92, 246, 0.2);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+/* Action Buttons */
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.625rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-action-primary {
+    background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+    color: white;
+}
+
+.btn-action-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-action-secondary {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn-action-secondary:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.btn-action-tertiary {
+    background: rgba(107, 114, 128, 0.2);
+    color: #d1d5db;
+    border: 1px solid rgba(107, 114, 128, 0.3);
+    text-decoration: none;
+}
+
+.btn-action-tertiary:hover {
+    background: rgba(107, 114, 128, 0.3);
+    border-color: rgba(107, 114, 128, 0.5);
+    color: white;
+}
+
+.btn-action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* =============================================================================
+   Toast Notifications
+   ============================================================================= */
+
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 10000;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.9), rgba(5, 150, 105, 0.9));
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.toast-error {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.9));
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.toast-info {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(37, 99, 235, 0.9));
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: white;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+/* =============================================================================
+   Animations
+   ============================================================================= */
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =============================================================================
+   Responsive Design (Mobile-First)
+   ============================================================================= */
+
+@media (max-width: 768px) {
+    .entry-card {
+        padding: 1rem;
+    }
+
+    .emotion-indicator {
+        width: 48px;
+        height: 48px;
+    }
+
+    .entry-title {
+        font-size: 1.1rem;
+    }
+
+    .entry-description {
+        font-size: 0.875rem;
+    }
+
+    .entry-actions {
+        flex-direction: column;
+    }
+
+    .btn-action {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .toast {
+        bottom: 1rem;
+        right: 1rem;
+        left: 1rem;
+    }
+}
+
+/* =============================================================================
+   Loading State
+   ============================================================================= */
+
+.loading-skeleton {
+    background: linear-gradient(90deg, rgba(75, 85, 99, 0.2) 25%, rgba(107, 114, 128, 0.3) 50%, rgba(75, 85, 99, 0.2) 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s ease-in-out infinite;
+}
+
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}

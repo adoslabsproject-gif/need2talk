@@ -1,0 +1,405 @@
+-- =============================================================================
+-- PHASE 1: PRIVACY & JOURNAL SYSTEM - ENTERPRISE GALAXY+
+-- =============================================================================
+-- Migration: Phase 1.1 - Database Schema
+-- Date: 2025-01-07
+-- Target: 100,000+ concurrent users
+-- Standards: Enterprise-grade indexes, foreign keys, partitioning-ready
+-- =============================================================================
+
+-- =============================================================================
+-- TABLE 1: journal_audio_files (PRIVATE audio storage, separate from public)
+-- =============================================================================
+-- Purpose: Store private diary audio files with encryption support
+-- Scalability: Partitioning-ready (by year/month for 1M+ users)
+-- Performance: Covering indexes for zero table lookups
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS journal_audio_files (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  uuid CHAR(36) NOT NULL UNIQUE COMMENT 'Globally unique identifier',
+  user_id BIGINT NOT NULL,
+
+  -- CDN Storage
+  filename VARCHAR(255) NOT NULL,
+  cdn_path VARCHAR(500) NOT NULL,
+  cdn_storage_zone VARCHAR(100) DEFAULT 'need2talk-audio' COMMENT 'BunnyCDN storage zone',
+  file_size INT UNSIGNED NOT NULL COMMENT 'File size in bytes',
+  mime_type VARCHAR(50) DEFAULT 'audio/webm' COMMENT 'MIME type (audio/webm)',
+
+  -- Audio Specifications
+  duration DECIMAL(6,2) NOT NULL COMMENT 'Duration in seconds (max 30s)',
+  bitrate INT UNSIGNED DEFAULT 48000 COMMENT 'Bitrate in bps (48kbps optimal)',
+  sample_rate INT UNSIGNED DEFAULT 16000 COMMENT 'Sample rate in Hz (16kHz for voice)',
+  codec VARCHAR(20) DEFAULT 'opus' COMMENT 'Audio codec (Opus optimal for voice)',
+
+  -- Emotional Context
+  primary_emotion_id INT UNSIGNED NULL COMMENT 'FK to emotions table',
+  intensity TINYINT UNSIGNED NULL COMMENT 'Intensity 1-10',
+
+  -- Privacy (ALWAYS private by design)
+  visibility ENUM('private') DEFAULT 'private' COMMENT 'Always private for journal',
+  is_shared BOOLEAN DEFAULT FALSE COMMENT 'Has been shared as public post?',
+  shared_as_post_id INT UNSIGNED NULL COMMENT 'FK to audio_posts if shared',
+
+  -- Encryption Metadata (Hybrid Zero-Knowledge Architecture)
+  encryption_algorithm VARCHAR(50) DEFAULT 'AES-256-GCM' COMMENT 'Encryption algorithm',
+  encryption_iv VARBINARY(32) NULL COMMENT 'Initialization vector (96 bits for GCM)',
+  is_encrypted BOOLEAN DEFAULT FALSE COMMENT 'Is file encrypted?',
+
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP NULL COMMENT 'Soft delete timestamp',
+
+  -- ========================================================================
+  -- INDEXES (ENTERPRISE: Optimized for 100k+ concurrent users)
+  -- ========================================================================
+  -- Covering index for user timeline query (most common)
+  INDEX idx_user_created (user_id, created_at DESC, deleted_at),
+
+  -- Emotion-based filtering
+  INDEX idx_user_emotion (user_id, primary_emotion_id, created_at DESC),
+
+  -- Shared posts tracking
+  INDEX idx_shared (is_shared, shared_as_post_id),
+
+  -- Active journal entries (exclude soft-deleted)
+  INDEX idx_user_active (user_id, deleted_at, created_at DESC),
+
+  -- UUID lookup (fast global search)
+  INDEX idx_uuid (uuid),
+
+  -- ========================================================================
+  -- FOREIGN KEYS (CASCADE for data integrity)
+  -- ========================================================================
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (primary_emotion_id) REFERENCES emotions(id) ON DELETE SET NULL,
+  FOREIGN KEY (shared_as_post_id) REFERENCES audio_posts(id) ON DELETE SET NULL
+
+) ENGINE=InnoDB
+  CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Private journal audio files (encrypted, enterprise-grade)';
+
+-- =============================================================================
+-- TABLE 2: journal_photos (Private photo storage for diary)
+-- =============================================================================
+-- Purpose: Store private diary photos with encryption support
+-- Use Case: Context photos for journal entries (mood, location, events)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS journal_photos (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  uuid CHAR(36) NOT NULL UNIQUE,
+  user_id BIGINT NOT NULL,
+
+  -- CDN Storage
+  filename VARCHAR(255) NOT NULL,
+  cdn_path VARCHAR(500) NOT NULL,
+  file_size INT UNSIGNED NOT NULL,
+  mime_type VARCHAR(50) DEFAULT 'image/jpeg' COMMENT 'MIME type (jpeg/png/webp)',
+
+  -- Image Specifications
+  width INT UNSIGNED COMMENT 'Image width in pixels',
+  height INT UNSIGNED COMMENT 'Image height in pixels',
+  aspect_ratio DECIMAL(5,3) COMMENT 'Aspect ratio (width/height)',
+
+  -- Privacy
+  visibility ENUM('private') DEFAULT 'private',
+  is_shared BOOLEAN DEFAULT FALSE,
+  shared_as_post_id INT UNSIGNED NULL COMMENT 'FK to audio_posts if shared',
+
+  -- Encryption Metadata
+  encryption_algorithm VARCHAR(50) DEFAULT 'AES-256-GCM',
+  encryption_iv VARBINARY(32) NULL,
+  is_encrypted BOOLEAN DEFAULT FALSE,
+
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP NULL,
+
+  -- ========================================================================
+  -- INDEXES
+  -- ========================================================================
+  INDEX idx_user_created (user_id, created_at DESC, deleted_at),
+  INDEX idx_shared (is_shared, shared_as_post_id),
+  INDEX idx_uuid (uuid),
+
+  -- ========================================================================
+  -- FOREIGN KEYS
+  -- ========================================================================
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (shared_as_post_id) REFERENCES audio_posts(id) ON DELETE SET NULL
+
+) ENGINE=InnoDB
+  CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Private journal photos (encrypted)';
+
+-- =============================================================================
+-- TABLE 3: user_encryption_keys (Master keys - Hybrid Encryption)
+-- =============================================================================
+-- Purpose: Store user master keys encrypted at rest
+-- Security: Server master key encrypts user master keys (password reset safe)
+-- Architecture: Hybrid Zero-Knowledge (balance security/UX)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS user_encryption_keys (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL UNIQUE COMMENT 'One key per user',
+
+  -- Master Key (encrypted at rest with server master key)
+  master_key_encrypted VARBINARY(512) NOT NULL COMMENT 'User master key (AES-256-GCM encrypted)',
+  master_key_algorithm VARCHAR(50) DEFAULT 'AES-256-GCM',
+  master_key_iv VARBINARY(32) NOT NULL COMMENT 'IV for master key encryption',
+
+  -- Key Derivation Info (PBKDF2/Argon2 for future use)
+  kdf_algorithm VARCHAR(50) DEFAULT 'PBKDF2-SHA256' COMMENT 'Key derivation function',
+  kdf_iterations INT UNSIGNED DEFAULT 100000 COMMENT 'PBKDF2 iterations (100k standard)',
+  kdf_salt VARBINARY(64) NOT NULL COMMENT 'Salt for key derivation',
+
+  -- Key Rotation (for security best practices)
+  key_version INT UNSIGNED DEFAULT 1 COMMENT 'Key version (increments on rotation)',
+  last_rotated_at TIMESTAMP NULL COMMENT 'Last key rotation timestamp',
+
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  -- ========================================================================
+  -- INDEXES
+  -- ========================================================================
+  UNIQUE INDEX idx_user_unique (user_id),
+  INDEX idx_key_version (key_version),
+
+  -- ========================================================================
+  -- FOREIGN KEYS
+  -- ========================================================================
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+
+) ENGINE=InnoDB
+  CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='User encryption master keys (hybrid zero-knowledge)';
+
+-- =============================================================================
+-- TABLE 4: user_privacy_settings (Granular visibility controls)
+-- =============================================================================
+-- Purpose: Sub-section level privacy controls for profile dashboard
+-- Granularity: Each dashboard section has individual visibility toggle
+-- Options: everyone / friends / only_me
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS user_privacy_settings (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL UNIQUE,
+
+  -- ========================================================================
+  -- PROFILE VISIBILITY (Main level)
+  -- ========================================================================
+  profile_visibility ENUM('public','friends','private') DEFAULT 'public' COMMENT 'Who can see profile?',
+  show_on_search BOOLEAN DEFAULT TRUE COMMENT 'Appear in search results?',
+
+  -- ========================================================================
+  -- DASHBOARD SECTION VISIBILITY (Section level)
+  -- ========================================================================
+  health_score_visibility ENUM('everyone','friends','only_me') DEFAULT 'friends',
+  emotion_wheel_visibility ENUM('everyone','friends','only_me') DEFAULT 'friends',
+  mood_timeline_visibility ENUM('everyone','friends','only_me') DEFAULT 'friends',
+  stats_visibility ENUM('everyone','friends','only_me') DEFAULT 'friends',
+  insights_visibility ENUM('everyone','friends','only_me') DEFAULT 'only_me' COMMENT 'Default private',
+
+  -- ========================================================================
+  -- SUB-SECTION VISIBILITY (Granular level - Health Score breakdown)
+  -- ========================================================================
+  health_score_total_visibility ENUM('everyone','friends','only_me') DEFAULT 'friends',
+  health_score_diversity_visibility ENUM('everyone','friends','only_me') DEFAULT 'friends',
+  health_score_balance_visibility ENUM('everyone','friends','only_me') DEFAULT 'friends',
+  health_score_stability_visibility ENUM('everyone','friends','only_me') DEFAULT 'friends',
+  health_score_engagement_visibility ENUM('everyone','friends','only_me') DEFAULT 'friends',
+
+  -- ========================================================================
+  -- ACTIVITY VISIBILITY
+  -- ========================================================================
+  show_online_status BOOLEAN DEFAULT TRUE COMMENT 'Show green dot when online?',
+  show_last_active BOOLEAN DEFAULT TRUE COMMENT 'Show "Last active X hours ago"?',
+  show_friend_list BOOLEAN DEFAULT TRUE COMMENT 'Show friend list on profile?',
+  show_friend_count BOOLEAN DEFAULT TRUE COMMENT 'Show friend count badge?',
+
+  -- ========================================================================
+  -- CONTENT VISIBILITY
+  -- ========================================================================
+  show_public_posts BOOLEAN DEFAULT TRUE COMMENT 'Show public audio posts?',
+  show_reactions BOOLEAN DEFAULT TRUE COMMENT 'Show reactions to posts?',
+  show_comments BOOLEAN DEFAULT TRUE COMMENT 'Show comments on posts?',
+
+  -- ========================================================================
+  -- PRIVACY PRESETS (Quick apply)
+  -- ========================================================================
+  privacy_preset ENUM('open','balanced','private','custom') DEFAULT 'balanced' COMMENT 'Quick preset selection',
+
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  -- ========================================================================
+  -- INDEXES
+  -- ========================================================================
+  UNIQUE INDEX idx_user_unique (user_id),
+  INDEX idx_profile_visibility (profile_visibility),
+  INDEX idx_preset (privacy_preset),
+
+  -- ========================================================================
+  -- FOREIGN KEYS
+  -- ========================================================================
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+
+) ENGINE=InnoDB
+  CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Granular privacy settings (sub-section level)';
+
+-- =============================================================================
+-- MODIFY EXISTING TABLE: emotional_journal_entries
+-- =============================================================================
+-- Purpose: Add encryption support + photo/audio links
+-- Changes: journal_audio_id, journal_photo_id, encrypted text, sharing flags
+-- =============================================================================
+ALTER TABLE emotional_journal_entries
+  -- Link to new journal tables (separate from public audio)
+  ADD COLUMN journal_audio_id INT UNSIGNED NULL COMMENT 'FK to journal_audio_files' AFTER audio_post_id,
+  ADD COLUMN journal_photo_id INT UNSIGNED NULL COMMENT 'FK to journal_photos' AFTER journal_audio_id,
+
+  -- Encrypted text content
+  ADD COLUMN text_content_encrypted MEDIUMBLOB NULL COMMENT 'AES-256-GCM encrypted text' AFTER text_content,
+  ADD COLUMN text_content_iv VARBINARY(32) NULL COMMENT 'Encryption IV for text' AFTER text_content_encrypted,
+  ADD COLUMN is_text_encrypted BOOLEAN DEFAULT FALSE COMMENT 'Is text encrypted?' AFTER text_content_iv,
+
+  -- Sharing flags (reference-based approach)
+  ADD COLUMN is_shared BOOLEAN DEFAULT FALSE COMMENT 'Shared as public post?' AFTER visibility,
+  ADD COLUMN shared_as_post_id INT UNSIGNED NULL COMMENT 'FK to audio_posts if shared' AFTER is_shared,
+
+  -- Indexes for new columns
+  ADD INDEX idx_journal_audio (journal_audio_id),
+  ADD INDEX idx_journal_photo (journal_photo_id),
+  ADD INDEX idx_shared (is_shared, shared_as_post_id),
+  ADD INDEX idx_user_shared (user_id, is_shared, created_at DESC),
+
+  -- Foreign keys
+  ADD CONSTRAINT fk_journal_audio
+    FOREIGN KEY (journal_audio_id) REFERENCES journal_audio_files(id) ON DELETE SET NULL,
+  ADD CONSTRAINT fk_journal_photo
+    FOREIGN KEY (journal_photo_id) REFERENCES journal_photos(id) ON DELETE SET NULL,
+  ADD CONSTRAINT fk_shared_post
+    FOREIGN KEY (shared_as_post_id) REFERENCES audio_posts(id) ON DELETE SET NULL;
+
+-- =============================================================================
+-- MODIFY EXISTING TABLE: audio_posts (Add source tracking for journal sharing)
+-- =============================================================================
+-- Purpose: Track when public posts come from shared journal entries
+-- Architecture: Reference-based (no CDN duplication, single source of truth)
+-- =============================================================================
+ALTER TABLE audio_posts
+  ADD COLUMN source_type ENUM('direct_upload','journal_shared') DEFAULT 'direct_upload'
+    COMMENT 'Source of audio (direct upload vs shared journal)' AFTER audio_file_id,
+  ADD COLUMN source_journal_audio_id INT UNSIGNED NULL
+    COMMENT 'FK to journal_audio_files if journal_shared' AFTER source_type,
+
+  -- Index for finding all public posts from journal
+  ADD INDEX idx_source_journal (source_journal_audio_id),
+  ADD INDEX idx_source_type (source_type, created_at DESC),
+
+  -- Foreign key (CASCADE delete if journal audio deleted)
+  ADD CONSTRAINT fk_source_journal_audio
+    FOREIGN KEY (source_journal_audio_id) REFERENCES journal_audio_files(id) ON DELETE CASCADE;
+
+-- =============================================================================
+-- DATA MIGRATION: Insert default privacy settings for existing users
+-- =============================================================================
+-- Purpose: Ensure all existing users have privacy settings row
+-- Default: 'balanced' preset (friends can see most, insights private)
+-- =============================================================================
+INSERT INTO user_privacy_settings (user_id, privacy_preset)
+SELECT id, 'balanced'
+FROM users
+WHERE id NOT IN (SELECT user_id FROM user_privacy_settings)
+  AND deleted_at IS NULL;
+
+-- =============================================================================
+-- PERFORMANCE OPTIMIZATION: Analyze tables for query optimizer
+-- =============================================================================
+-- Purpose: Update table statistics for MySQL query optimizer
+-- Result: Better query plans, faster execution
+-- =============================================================================
+ANALYZE TABLE journal_audio_files;
+ANALYZE TABLE journal_photos;
+ANALYZE TABLE user_encryption_keys;
+ANALYZE TABLE user_privacy_settings;
+ANALYZE TABLE emotional_journal_entries;
+ANALYZE TABLE audio_posts;
+
+-- =============================================================================
+-- VERIFICATION QUERIES (Run after migration to verify)
+-- =============================================================================
+-- Check table creation
+-- SELECT COUNT(*) as journal_audio_count FROM journal_audio_files;
+-- SELECT COUNT(*) as journal_photos_count FROM journal_photos;
+-- SELECT COUNT(*) as encryption_keys_count FROM user_encryption_keys;
+-- SELECT COUNT(*) as privacy_settings_count FROM user_privacy_settings;
+
+-- Check indexes created
+-- SHOW INDEXES FROM journal_audio_files;
+-- SHOW INDEXES FROM emotional_journal_entries;
+-- SHOW INDEXES FROM audio_posts;
+
+-- Verify privacy settings for all users
+-- SELECT COUNT(*) as users_with_settings
+-- FROM users u
+-- INNER JOIN user_privacy_settings ups ON u.id = ups.user_id
+-- WHERE u.deleted_at IS NULL;
+
+-- =============================================================================
+-- ROLLBACK SCRIPT (IF NEEDED)
+-- =============================================================================
+-- WARNING: This will drop all new tables and remove added columns
+-- ONLY use if migration fails and needs complete rollback
+-- =============================================================================
+/*
+-- Drop foreign keys first
+ALTER TABLE emotional_journal_entries
+  DROP FOREIGN KEY fk_journal_audio,
+  DROP FOREIGN KEY fk_journal_photo,
+  DROP FOREIGN KEY fk_shared_post;
+
+ALTER TABLE audio_posts
+  DROP FOREIGN KEY fk_source_journal_audio;
+
+-- Drop added columns
+ALTER TABLE emotional_journal_entries
+  DROP COLUMN journal_audio_id,
+  DROP COLUMN journal_photo_id,
+  DROP COLUMN text_content_encrypted,
+  DROP COLUMN text_content_iv,
+  DROP COLUMN is_text_encrypted,
+  DROP COLUMN is_shared,
+  DROP COLUMN shared_as_post_id;
+
+ALTER TABLE audio_posts
+  DROP COLUMN source_type,
+  DROP COLUMN source_journal_audio_id;
+
+-- Drop new tables
+DROP TABLE IF EXISTS user_privacy_settings;
+DROP TABLE IF EXISTS user_encryption_keys;
+DROP TABLE IF EXISTS journal_photos;
+DROP TABLE IF EXISTS journal_audio_files;
+*/
+
+-- =============================================================================
+-- MIGRATION COMPLETE
+-- =============================================================================
+-- Next Steps:
+-- 1. Run this migration on TEST environment first
+-- 2. Verify all indexes created (SHOW INDEXES FROM table_name)
+-- 3. Test query performance with EXPLAIN
+-- 4. Deploy to PRODUCTION during low-traffic window
+-- 5. Monitor performance metrics after migration
+-- =============================================================================

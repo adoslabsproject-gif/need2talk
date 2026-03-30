@@ -1,0 +1,164 @@
+/**
+ * ERROR PAGES ANIMATIONS - need2talk
+ *
+ * Animazioni CSS-only per pagine 404 e 500
+ * Performance: Hardware-accelerated, zero JavaScript
+ */
+
+/* ============================================================================
+   404 PAGE ANIMATIONS
+   ============================================================================ */
+
+/* Person searching animation - muove omino avanti/indietro */
+@keyframes search-walk {
+    0%, 100% { transform: translateX(-30px); }
+    50% { transform: translateX(30px); }
+}
+
+/* Flashlight swing - torcia che oscilla */
+@keyframes flashlight-swing {
+    0%, 100% { transform: rotate(-15deg); }
+    50% { transform: rotate(15deg); }
+}
+
+/* Flashlight beam pulse - raggio di luce pulsante */
+@keyframes beam-pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+}
+
+/* Eyes looking around - occhi che guardano */
+@keyframes look-around {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Floating animation - elementi che fluttuano */
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-15px); }
+}
+
+/* Question marks pulse - punti interrogativi pulsanti */
+@keyframes question-pulse {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.1);
+    }
+}
+
+/* Applicazione animazioni */
+.person-searching {
+    animation: search-walk 4s ease-in-out infinite;
+}
+
+.flashlight {
+    animation: flashlight-swing 2s ease-in-out infinite;
+}
+
+.flashlight-beam {
+    animation: beam-pulse 2s ease-in-out infinite;
+}
+
+.error-code {
+    animation: float 3s ease-in-out infinite;
+}
+
+.question-mark {
+    animation: question-pulse 2s ease-in-out infinite;
+}
+
+
+/* ============================================================================
+   500 PAGE ANIMATIONS
+   ============================================================================ */
+
+/* Smoke rising from server - fumo che sale e ondeggia */
+@keyframes smoke-rise {
+    0% {
+        transform: translateY(0) translateX(0) scale(0.8) rotate(0deg);
+        opacity: 0.9;
+    }
+    25% {
+        transform: translateY(-30px) translateX(10px) scale(1) rotate(5deg);
+        opacity: 0.8;
+    }
+    50% {
+        transform: translateY(-60px) translateX(-8px) scale(1.3) rotate(-3deg);
+        opacity: 0.6;
+    }
+    75% {
+        transform: translateY(-90px) translateX(12px) scale(1.6) rotate(7deg);
+        opacity: 0.3;
+    }
+    100% {
+        transform: translateY(-120px) translateX(-5px) scale(2) rotate(-5deg);
+        opacity: 0;
+    }
+}
+
+/* Server shaking - server che trema */
+@keyframes server-shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+    20%, 40%, 60%, 80% { transform: translateX(3px); }
+}
+
+/* Error lights blinking - luci di errore lampeggianti */
+@keyframes error-blink {
+    0%, 50%, 100% { opacity: 1; }
+    25%, 75% { opacity: 0.3; }
+}
+
+/* Sparks flying - scintille */
+@keyframes spark {
+    0%, 100% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Applicazione animazioni */
+.smoke {
+    animation: smoke-rise 3s ease-out infinite;
+}
+
+.server-shake {
+    animation: server-shake 0.5s ease-in-out infinite;
+}
+
+.error-light {
+    animation: error-blink 1s ease-in-out infinite;
+}
+
+.spark {
+    animation: spark 1.5s ease-in-out infinite;
+}
+
+/* ============================================================================
+   PERFORMANCE OPTIMIZATIONS
+   ============================================================================ */
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .person-searching,
+    .flashlight,
+    .flashlight-beam,
+    .error-code,
+    .question-mark,
+    .smoke,
+    .server-shake,
+    .error-light,
+    .spark {
+        animation: none !important;
+    }
+}

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Audio Player</title>
+</head>
+<body>
+<audio id="bgm" loop preload="auto">
+    <source src="/assets/sounds/bless_you_loop.mp3" type="audio/mpeg">
+</audio>
+<script>
+/**
+ * ENTERPRISE GALAXY: Iframe Audio Player v3.0.0
+ * CLEAN VERSION - No AudioContext, just native audio.volume
+ */
+(function() {
+    'use strict';
+
+    var audio = document.getElementById('bgm');
+    var isPlaying = false;
+
+    audio.volume = 0.15;
+
+    // Session timeout: 30 minutes
+    var SESSION_TIMEOUT = 1800000;
+
+    function getSavedPosition() {
+        var lastTs = parseInt(localStorage.getItem('bgm_last_ts') || '0', 10);
+        if ((Date.now() - lastTs) > SESSION_TIMEOUT) {
+            localStorage.removeItem('bgm_pos');
+            localStorage.removeItem('bgm_last_ts');
+            return 0;
+        }
+        var pos = parseFloat(localStorage.getItem('bgm_pos') || '0');
+        return isNaN(pos) ? 0 : pos;
+    }
+
+    function savePosition() {
+        if (audio.currentTime > 0) {
+            localStorage.setItem('bgm_pos', audio.currentTime.toFixed(2));
+            localStorage.setItem('bgm_last_ts', Date.now().toString());
+        }
+    }
+
+    function reportState() {
+        try {
+            parent.postMessage({
+                type: 'bgm_state',
+                playing: isPlaying,
+                paused: audio.paused,
+                position: audio.currentTime
+            }, '*');
+        } catch (e) {}
+    }
+
+    // Restore position after metadata loaded
+    audio.addEventListener('loadedmetadata', function() {
+        var savedPos = getSavedPosition();
+        if (savedPos > 0 && savedPos < audio.duration) {
+            audio.currentTime = savedPos;
+            console.log('[BGM] Position restored to:', savedPos.toFixed(2));
+        }
+        // Try autoplay immediately
+        attemptAutoPlay();
+    });
+
+    function attemptAutoPlay() {
+        if (localStorage.getItem('bgm_muted') === '1') {
+            parent.postMessage({ type: 'bgm_ready', autoplaySkipped: true }, '*');
+            return;
+        }
+
+        audio.play()
+            .then(function() {
+                console.log('[BGM] Autoplay SUCCESS');
+                isPlaying = true;
+                sessionStorage.setItem('bgm_unlocked', '1');
+                parent.postMessage({ type: 'bgm_ready', autoplaySuccess: true }, '*');
+            })
+            .catch(function(err) {
+                console.log('[BGM] Autoplay blocked:', err.name);
+                parent.postMessage({ type: 'bgm_ready', autoplayBlocked: true }, '*');
+            });
+    }
+
+    // Save position periodically
+    setInterval(function() {
+        if (!audio.paused) {
+            savePosition();
+            isPlaying = true;
+        }
+        reportState();
+    }, 300);
+
+    // Save on page unload
+    window.addEventListener('beforeunload', savePosition);
+    window.addEventListener('pagehide', function() {
+        savePosition();
+        audio.pause();  // ENTERPRISE V12.2: Stop audio when page is hidden
+        isPlaying = false;
+    });
+
+    // ENTERPRISE V12.2: Pause audio when tab/browser goes to background
+    // Fixes issue where audio keeps playing in Facebook WebView after "closing"
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'hidden') {
+            savePosition();
+            audio.pause();
+            isPlaying = false;
+            reportState();
+        }
+        // Don't auto-resume when visible again - user must click play
+    });
+
+    // Handle messages from parent
+    window.addEventListener('message', function(e) {
+        if (e.data === 'play' || (e.data && e.data.command === 'play')) {
+            audio.play().then(function() {
+                isPlaying = true;
+                sessionStorage.setItem('bgm_unlocked', '1');
+                reportState();
+            }).catch(function() {});
+        }
+        if (e.data === 'pause' || (e.data && e.data.command === 'pause')) {
+            audio.pause();
+            isPlaying = false;
+            savePosition();
+            reportState();
+        }
+    });
+
+    audio.addEventListener('pause', function() {
+        isPlaying = false;
+        savePosition();
+        reportState();
+    });
+
+    audio.addEventListener('play', function() {
+        isPlaying = true;
+        reportState();
+    });
+
+    // Report ready
+    parent.postMessage({ type: 'bgm_ready' }, '*');
+})();
+</script>
+</body>
+</html>

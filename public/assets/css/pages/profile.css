@@ -1,0 +1,385 @@
+/*
+ * NEED2TALK - Profile Page Styles
+ * Enterprise CSS following sistema-css-comune.md
+ * Glass morphism design for 100k+ concurrent users
+ */
+
+/* ========================================
+   PROFILE HERO SECTION
+======================================== */
+
+.profile-hero {
+    background: linear-gradient(
+        135deg,
+        rgba(139, 69, 19, 0.15) 0%,
+        rgba(75, 0, 130, 0.25) 35%,
+        rgba(25, 25, 112, 0.20) 70%,
+        rgba(220, 20, 60, 0.15) 100%
+    );
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+        circle at 20% 30%,
+        rgba(138, 43, 226, 0.1) 0%,
+        transparent 50%
+    ),
+    radial-gradient(
+        circle at 80% 70%,
+        rgba(255, 20, 147, 0.08) 0%,
+        transparent 50%
+    );
+    z-index: -1;
+}
+
+/* ========================================
+   PROFILE AVATAR SECTION
+======================================== */
+
+.profile-avatar-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-avatar {
+    background: linear-gradient(
+        135deg,
+        rgba(147, 51, 234, 0.8) 0%,
+        rgba(219, 39, 119, 0.8) 100%
+    );
+    backdrop-filter: blur(15px);
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    box-shadow:
+        0 20px 40px rgba(147, 51, 234, 0.3),
+        0 8px 16px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.profile-avatar:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow:
+        0 25px 50px rgba(147, 51, 234, 0.4),
+        0 12px 24px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.profile-online-indicator {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: 4px solid rgba(17, 24, 39, 0.8);
+    box-shadow:
+        0 0 20px rgba(16, 185, 129, 0.6),
+        0 4px 8px rgba(0, 0, 0, 0.3);
+    animation: pulseGreen 2s infinite;
+}
+
+@keyframes pulseGreen {
+    0%, 100% {
+        box-shadow:
+            0 0 20px rgba(16, 185, 129, 0.6),
+            0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    50% {
+        box-shadow:
+            0 0 30px rgba(16, 185, 129, 0.8),
+            0 6px 12px rgba(0, 0, 0, 0.4);
+    }
+}
+
+/* ========================================
+   PROFILE STATS CARDS
+======================================== */
+
+.profile-stats-card {
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.08) 0%,
+        rgba(255, 255, 255, 0.02) 100%
+    );
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.2),
+        0 4px 16px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-stats-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.2) 50%,
+        transparent 100%
+    );
+}
+
+.profile-stats-card:hover {
+    transform: translateY(-4px) scale(1.02);
+    border-color: rgba(147, 51, 234, 0.3);
+    box-shadow:
+        0 16px 48px rgba(0, 0, 0, 0.3),
+        0 8px 24px rgba(147, 51, 234, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.profile-stats-card.audio-card:hover {
+    border-color: rgba(147, 51, 234, 0.5);
+    box-shadow:
+        0 16px 48px rgba(0, 0, 0, 0.3),
+        0 8px 24px rgba(147, 51, 234, 0.3);
+}
+
+.profile-stats-card.listens-card:hover {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow:
+        0 16px 48px rgba(0, 0, 0, 0.3),
+        0 8px 24px rgba(16, 185, 129, 0.3);
+}
+
+.profile-stats-card.rank-card:hover {
+    border-color: rgba(245, 158, 11, 0.5);
+    box-shadow:
+        0 16px 48px rgba(0, 0, 0, 0.3),
+        0 8px 24px rgba(245, 158, 11, 0.3);
+}
+
+/* ========================================
+   QUICK ACTION CARDS
+======================================== */
+
+.profile-action-card {
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.05) 0%,
+        rgba(255, 255, 255, 0.01) 100%
+    );
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-action-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.05) 50%,
+        transparent 100%
+    );
+    transition: left 0.6s ease;
+}
+
+.profile-action-card:hover::before {
+    left: 100%;
+}
+
+.profile-action-card:hover {
+    transform: translateY(-6px) scale(1.03);
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.profile-action-card.create-audio:hover {
+    border-color: rgba(147, 51, 234, 0.4);
+    background: linear-gradient(
+        135deg,
+        rgba(147, 51, 234, 0.15) 0%,
+        rgba(147, 51, 234, 0.05) 100%
+    );
+}
+
+.profile-action-card.listen-community:hover {
+    border-color: rgba(16, 185, 129, 0.4);
+    background: linear-gradient(
+        135deg,
+        rgba(16, 185, 129, 0.15) 0%,
+        rgba(16, 185, 129, 0.05) 100%
+    );
+}
+
+.profile-action-card.manage-settings:hover {
+    border-color: rgba(59, 130, 246, 0.4);
+    background: linear-gradient(
+        135deg,
+        rgba(59, 130, 246, 0.15) 0%,
+        rgba(59, 130, 246, 0.05) 100%
+    );
+}
+
+.profile-action-card.view-stats:hover {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: linear-gradient(
+        135deg,
+        rgba(245, 158, 11, 0.15) 0%,
+        rgba(245, 158, 11, 0.05) 100%
+    );
+}
+
+/* ========================================
+   PROFILE ACTION ICONS
+======================================== */
+
+.profile-action-icon {
+    font-size: 2.5rem;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.profile-action-card:hover .profile-action-icon {
+    transform: scale(1.1) rotateY(5deg);
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4));
+}
+
+/* ========================================
+   DEVELOPMENT NOTICE SECTION
+======================================== */
+
+.profile-dev-notice {
+    background: linear-gradient(
+        135deg,
+        rgba(37, 99, 235, 0.15) 0%,
+        rgba(29, 78, 216, 0.1) 100%
+    );
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    box-shadow:
+        0 8px 32px rgba(37, 99, 235, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-dev-notice::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        rgba(59, 130, 246, 0.5) 0%,
+        rgba(99, 102, 241, 0.5) 50%,
+        rgba(59, 130, 246, 0.5) 100%
+    );
+    animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+======================================== */
+
+@media (max-width: 768px) {
+    .profile-hero {
+        padding: 2rem 1rem;
+    }
+
+    .profile-avatar {
+        width: 80px;
+        height: 80px;
+    }
+
+    .profile-action-icon {
+        font-size: 2rem;
+    }
+
+    .profile-stats-card,
+    .profile-action-card {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .profile-hero {
+        padding: 1.5rem 0.75rem;
+    }
+
+    .profile-avatar {
+        width: 64px;
+        height: 64px;
+    }
+
+    .profile-action-icon {
+        font-size: 1.75rem;
+    }
+}
+
+/* ========================================
+   ACCESSIBILITY ENHANCEMENTS
+======================================== */
+
+.profile-action-card:focus {
+    outline: 2px solid rgba(147, 51, 234, 0.6);
+    outline-offset: 2px;
+}
+
+.profile-stats-card:focus-within {
+    border-color: rgba(147, 51, 234, 0.4);
+    box-shadow:
+        0 0 0 2px rgba(147, 51, 234, 0.2),
+        0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+/* ========================================
+   DARK MODE OPTIMIZATIONS
+======================================== */
+
+@media (prefers-color-scheme: dark) {
+    .profile-hero {
+        background: linear-gradient(
+            135deg,
+            rgba(139, 69, 19, 0.20) 0%,
+            rgba(75, 0, 130, 0.30) 35%,
+            rgba(25, 25, 112, 0.25) 70%,
+            rgba(220, 20, 60, 0.20) 100%
+        );
+    }
+
+    .profile-stats-card,
+    .profile-action-card {
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.06) 0%,
+            rgba(255, 255, 255, 0.01) 100%
+        );
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+}

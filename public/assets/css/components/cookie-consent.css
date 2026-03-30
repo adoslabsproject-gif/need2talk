@@ -1,0 +1,151 @@
+/**
+ * Cookie Consent Component - need2talk
+ * Stili specifici per il sistema di consenso cookie granulare
+ * Usa principalmente Tailwind CSS con alcuni stili specifici necessari
+ */
+
+/* Banner principale - posizionato in bottom viewport sticky */
+.cookie-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    transform: translateY(100%);
+    transition: all 0.3s ease-in-out;
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* Variante per viewport mobile con safe area */
+@supports (padding: max(0px)) {
+    .cookie-banner {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+.cookie-banner.show {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+}
+
+.cookie-banner.animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+}
+
+.cookie-banner.animate-fade-out {
+    animation: fadeOut 0.3s ease-in forwards;
+}
+
+/* Modal overlay - essenziale per il sistema modal */
+.cookie-settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1100;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease-in-out;
+}
+
+.cookie-settings-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Responsive Design per mobile */
+@media (max-width: 640px) {
+    .cookie-settings-overlay {
+        align-items: flex-end;
+        padding: 0;
+    }
+    
+    .cookie-settings-overlay > div {
+        border-radius: 1rem 1rem 0 0 !important;
+        max-height: 85vh !important;
+    }
+}
+
+/* Animazioni */
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+}
+
+/* Focus e accessibilità */
+.cookie-banner button:focus-visible,
+.cookie-settings-overlay button:focus-visible,
+.cookie-settings-overlay input:focus-visible {
+    outline: 2px solid rgb(147 51 234) !important;
+    outline-offset: 2px;
+}
+
+/* Stati loading */
+.cookie-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .cookie-banner {
+        background: #000000 !important;
+        border-color: #ffffff !important;
+    }
+    
+    .cookie-settings-overlay > div {
+        background: #000000 !important;
+        border-color: #ffffff !important;
+    }
+}
+
+/* Fix: X emoji visibility on cookie decline button */
+#cookie-decline-all > span[role="img"] {
+    filter: brightness(0) saturate(100%) invert(0%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(0%) contrast(100%);
+    /* Makes emoji appear black instead of gray */
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .cookie-banner,
+    .cookie-settings-overlay {
+        transition: none !important;
+    }
+
+    @keyframes slideUp {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+    }
+}

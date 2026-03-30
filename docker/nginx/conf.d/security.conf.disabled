@@ -1,0 +1,55 @@
+# ============================================================================
+# NEED2TALK - NGINX SECURITY CONFIGURATION
+# ============================================================================
+# Equivalente .htaccess Apache per protezione files sensibili
+
+# Block access to .env and sensitive config files
+location ~ /\.env {
+    deny all;
+    return 404;
+}
+
+location ~ /\.git {
+    deny all;
+    return 404;
+}
+
+# Block access to sensitive directories
+location ~ ^/(vendor|node_modules|docker|database|bin|scripts|tests|storage/logs|storage/cache|storage/sessions|config)/ {
+    deny all;
+    return 404;
+}
+
+# Block access to PHP files in storage
+location ~* ^/storage/.*\.php$ {
+    deny all;
+    return 404;
+}
+
+# Block access to composer and package files
+location ~ /(composer\.(json|lock)|package(-lock)?\.json|phpstan\.neon|\.php-cs-fixer\.(php|cache))$ {
+    deny all;
+    return 404;
+}
+
+# Block access to backup and temp files
+location ~* \.(bak|backup|old|tmp|swp|swo|log|sql|md|rtf|txt)$ {
+    deny all;
+    return 404;
+}
+
+# EXCEPTION: Allow storage/debugbar/*.json for DebugBar (development only)
+location ~ ^/storage/debugbar/.*\.json$ {
+    allow all;
+}
+
+# EXCEPTION: Allow public assets
+location ~ ^/(assets|dist|css|js|fonts|images)/ {
+    allow all;
+}
+
+# Security Headers
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header X-XSS-Protection "1; mode=block" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;

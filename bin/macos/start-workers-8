@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# 🚀 Start 8 Email Workers via launchd (macOS)
+# Capacity: ~3,200 emails in batch
+
+WORKER_COUNT=8 "$(dirname "$0")/launchd-email-control.sh" start

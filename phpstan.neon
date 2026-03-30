@@ -1,0 +1,95 @@
+parameters:
+    level: 3
+    phpVersion: 80300
+    paths:
+        - app/Controllers
+        - app/Core
+        - app/Models
+        - app/Services
+        - app/Middleware
+        - config
+        - routes
+    tmpDir: storage/phpstan
+    excludePaths:
+        - app/Helpers/lightning-helpers.php
+        - app/Core/Stubs
+        - vendor
+        - storage
+    ignoreErrors:
+        # Lightning Framework global helpers
+        - '#Call to undefined function url\(\)#'
+        - '#Call to undefined function csrf_token\(\)#'
+        - '#Call to undefined function asset\(\)#'
+        - '#Call to undefined function route\(\)#'
+        - '#Call to undefined function redirect\(\)#'
+        - '#Call to undefined function view\(\)#'
+        - '#Call to undefined function config\(\)#'
+
+        # Database and session helpers
+        - '#Call to undefined function db_pdo\(\)#'
+        - '#Call to undefined function get_session\(\)#'
+        - '#Call to undefined function set_session\(\)#'
+        - '#Call to undefined function get_server\(\)#'
+
+        # Lightning Enterprise functions
+        - '#Function enterprise_log not found#'
+        - '#Function db_pdo not found#'
+        - '#Function get_server not found#'
+        - '#Function get_session not found#'
+        - '#Function debugbar_render not found#'
+        - '#Function debugbar_render_head not found#'
+        - '#Function url not found#'
+        - '#Function config not found#'
+        - '#Function view not found#'
+        - '#Function asset not found#'
+        - '#Function csrf_token not found#'
+        - '#Function cache not found#'
+        - '#Function env not found#'
+        - '#Function storage_path not found#'
+        - '#Function db not found#'
+        - '#Function should_log not found#'
+
+        # Enterprise Custom Classes (PDO wrappers)
+        - '#.*AutoReleasePDO.*#'
+        - '#.*TrackedPDO.*#'
+
+        # Redis method compatibility (stub issues)
+        - '#Call to an undefined method Redis::#'
+
+        # Framework patterns
+        - '#Function auth not found#'
+        - '#Unsafe usage of new static\(\)#'
+
+        # Stub files (IDE support only, not runtime)
+        - '#Constructor of class Aws\\.*has an unused parameter#'
+        - '#Constructor of class Monolog\\.*has an unused parameter#'
+        - message: '#.*Stubs.*#'
+          path: app/Core/Stubs/*
+
+        # Global variables that are framework-managed
+        - '#Undefined variable: \$_SESSION#'
+        - '#Undefined variable: \$_SERVER#'
+        - '#Undefined variable: \$_GET#'
+        - '#Undefined variable: \$_POST#'
+
+        # Lightning Framework template variables
+        - '#Undefined variable: \$content#'
+        - '#Undefined variable: \$title#'
+        - '#Undefined variable: \$pageCSS#'
+        - '#Undefined variable: \$pageJS#'
+
+        # DebugBar compatibility
+        - '#Call to undefined method.*DebugBar.*#'
+        - '#Class.*DebugBar.*not found#'
+
+        # TrackedPDO and enterprise extensions
+        - '#Method.*TrackedPDO.*not found#'
+        - '#Property.*TrackedPDO.*does not exist#'
+
+        # Lightning Framework specific patterns
+        - '#Access to an undefined property.*EnterpriseGlobalsManager#'
+        - '#Call to an undefined method.*Logger::#'
+        - '#Constant APP_ROOT not found#'
+        - '#Variable \$router might not be defined#'
+
+    reportUnmatchedIgnoredErrors: false

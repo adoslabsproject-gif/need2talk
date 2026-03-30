@@ -1,0 +1,67 @@
+{
+  "name": "need2talk-enterprise",
+  "version": "1.0.0",
+  "description": "Enterprise CSS Build System for need2talk - Supports 100k+ concurrent users",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "build:watch": "vite build --watch",
+    "build:css": "npm run build:css-public && npm run build:css-post-login && npm run build:css-admin",
+    "build:css-public": "postcss src/tailwind.css -o public/assets/css/app.css --env production",
+    "build:css-post-login": "postcss src/tailwind.css -o public/assets/css/app-post-login.css --env production",
+    "build:css-admin": "postcss src/tailwind.css -o public/assets/css/base.css --env production",
+    "build:css-dev": "npm run build:css-public-dev & npm run build:css-post-login-dev & npm run build:css-admin-dev",
+    "build:css-public-dev": "postcss src/tailwind.css -o public/assets/css/app.css --env development --watch",
+    "build:css-post-login-dev": "postcss src/tailwind.css -o public/assets/css/app-post-login.css --env development --watch",
+    "build:css-admin-dev": "postcss src/tailwind.css -o public/assets/css/base.css --env development --watch",
+    "build:css-critical": "postcss src/critical.css -o public/assets/css/critical.css --env production",
+    "optimize:css": "purgecss --css public/assets/css/app.css public/assets/css/app-post-login.css --content 'app/Views/**/*.php' 'public/assets/js/**/*.js' --output public/assets/css/",
+    "analyze:css": "postcss src/tailwind.css --env development --verbose",
+    "lint:css": "stylelint 'src/**/*.css'",
+    "monitor:build": "node scripts/build-monitor.js",
+    "minify:debugbar": "node scripts/minify-debugbar.js",
+    "minify:public": "bash scripts/minify-public-js.sh",
+    "minify:public:force": "bash scripts/minify-public-js.sh --force",
+    "enterprise:build": "npm run build && npm run minify:debugbar && npm run minify:public",
+    "build:all": "npm run build:css && npm run build",
+    "build:full": "npm run build:all && npm run minify:debugbar && npm run minify:public"
+  },
+  "dependencies": {
+    "@tailwindcss/aspect-ratio": "^0.4.2",
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/typography": "^0.5.10",
+    "autoprefixer": "^10.4.16",
+    "chart.js": "^4.5.1",
+    "postcss": "^8.4.32",
+    "postcss-cli": "^11.0.0",
+    "postcss-import": "^15.1.0",
+    "postcss-nested": "^6.0.1",
+    "tailwindcss": "^3.4.0",
+    "tinymce": "^8.1.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-legacy": "^7.2.1",
+    "critical": "^7.2.1",
+    "cssnano": "^6.0.0",
+    "postcss-reporter": "^7.0.5",
+    "purgecss": "^5.0.0",
+    "stylelint": "^16.0.0",
+    "stylelint-config-standard": "^36.0.0",
+    "terser": "^5.44.1",
+    "vite": "^7.1.9",
+    "vite-plugin-static-copy": "^3.1.3"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "need2talk",
+    "enterprise",
+    "css",
+    "tailwind",
+    "postcss",
+    "scalability",
+    "performance"
+  ]
+}

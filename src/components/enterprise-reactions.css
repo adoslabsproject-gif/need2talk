@@ -1,0 +1,331 @@
+/**
+ * Enterprise Reactions Component - need2talk Galaxy
+ *
+ * Professional emotional reactions UI
+ * Integrates perfectly with audio post cards
+ *
+ * Design: Glassmorphism, subtle shadows, smooth animations
+ * Performance: GPU-accelerated, 60fps
+ * Accessibility: High contrast, focus states, touch-friendly
+ */
+
+/* Reaction Picker Wrapper - Separated from post card */
+.reaction-picker-wrapper {
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.7) 0%, rgba(17, 24, 39, 0.7) 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    border-radius: 16px;
+    padding: 16px;
+    margin-top: -4px; /* Slight overlap with post card for visual integration */
+    box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.2),
+        0 2px 4px -1px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.reaction-picker-wrapper:hover {
+    border-color: rgba(139, 92, 246, 0.3);
+    box-shadow:
+        0 10px 15px -3px rgba(139, 92, 246, 0.15),
+        0 4px 6px -2px rgba(139, 92, 246, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+/* Reactions Container - Horizontal scroll with custom scrollbar */
+.reactions-container {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 4px 12px 4px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+}
+
+/* Custom Scrollbar */
+.reactions-container::-webkit-scrollbar {
+    height: 6px;
+}
+
+.reactions-container::-webkit-scrollbar-track {
+    background: rgba(17, 24, 39, 0.5);
+    border-radius: 3px;
+}
+
+.reactions-container::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.4);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+}
+
+.reactions-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(139, 92, 246, 0.6);
+}
+
+/* Reaction Button - Enterprise Design */
+.reaction-btn {
+    position: relative;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 68px;
+    height: 74px;
+    padding: 10px 12px;
+    background: rgba(31, 41, 55, 0.6);
+    border: 2px solid rgba(75, 85, 99, 0.4);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow:
+        0 2px 4px -1px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+/* Reaction Button Hover State */
+.reaction-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    border-color: rgba(139, 92, 246, 0.5);
+    background: rgba(139, 92, 246, 0.15);
+    box-shadow:
+        0 8px 12px -2px rgba(139, 92, 246, 0.3),
+        0 4px 6px -1px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Reaction Button Active State (user selected) */
+.reaction-btn.bg-gradient-to-r {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.25) 0%, rgba(139, 92, 246, 0.25) 100%);
+    border: 2px solid rgba(236, 72, 153, 0.7);
+    transform: scale(1.08);
+    box-shadow:
+        0 8px 16px -4px rgba(236, 72, 153, 0.4),
+        0 4px 8px -2px rgba(139, 92, 246, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.reaction-btn.bg-gradient-to-r:hover {
+    transform: translateY(-3px) scale(1.1);
+    border-color: rgba(236, 72, 153, 0.9);
+    box-shadow:
+        0 12px 20px -4px rgba(236, 72, 153, 0.5),
+        0 6px 10px -2px rgba(139, 92, 246, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Reaction Button Focus State (accessibility) */
+.reaction-btn:focus {
+    outline: none;
+    border-color: rgba(139, 92, 246, 0.8);
+    box-shadow:
+        0 0 0 3px rgba(139, 92, 246, 0.3),
+        0 8px 12px -2px rgba(139, 92, 246, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Reaction Button Active (click) State */
+.reaction-btn:active {
+    transform: translateY(-1px) scale(1.02);
+}
+
+/* Reaction Emoji Icon */
+.reaction-btn span:first-child {
+    font-size: 28px;
+    line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.reaction-btn:hover span:first-child {
+    transform: scale(1.15);
+}
+
+.reaction-btn.bg-gradient-to-r span:first-child {
+    transform: scale(1.1);
+}
+
+/* Reaction Count Badge */
+.reaction-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 18px;
+    margin-top: 6px;
+    padding: 0 6px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    border-radius: 9px;
+    background: rgba(17, 24, 39, 0.8);
+    border: 1px solid currentColor;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+}
+
+.reaction-btn:hover .reaction-count {
+    transform: scale(1.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Empty count (0 reactions) */
+.reaction-count:empty {
+    display: none;
+}
+
+/* Remove Reaction Button */
+.remove-reaction {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #9CA3AF;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.remove-reaction:hover {
+    color: #FCA5A5;
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3);
+}
+
+.remove-reaction:active {
+    transform: translateY(0);
+}
+
+/* Rate Limit Warning
+ * CRITICAL (2025-11-21): NO display property here!
+ * Tailwind 'hidden' class (display: none) must work without conflicts
+ * JavaScript adds 'flex' class dynamically when showing warning
+ */
+.rate-limit-warning {
+    /* display: removed - managed by Tailwind classes (hidden/flex) */
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #FCD34D;
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.rate-limit-warning svg {
+    flex-shrink: 0;
+    animation: pulse-warning 2s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Mobile Responsive */
+@media (max-width: 640px) {
+    .reaction-picker-wrapper {
+        padding: 14px;
+        border-radius: 14px;
+    }
+
+    .reaction-btn {
+        min-width: 60px;
+        height: 68px;
+        padding: 8px 10px;
+    }
+
+    .reaction-btn span:first-child {
+        font-size: 26px;
+    }
+
+    .reaction-count {
+        font-size: 10px;
+        min-width: 20px;
+        height: 16px;
+        margin-top: 4px;
+    }
+}
+
+/* Touch devices - Larger hit targets */
+@media (pointer: coarse) {
+    .reaction-btn {
+        min-width: 72px;
+        height: 78px;
+    }
+}
+
+/* Accessibility: Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .reaction-picker-wrapper,
+    .reaction-btn,
+    .reaction-btn span:first-child,
+    .reaction-count,
+    .remove-reaction {
+        transition: none;
+        transform: none !important;
+        animation: none;
+    }
+}
+
+/* Loading State */
+.reaction-picker-wrapper.loading {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.reaction-picker-wrapper.loading .reactions-container {
+    filter: blur(2px);
+}
+
+/* Fade-in animation when initializing */
+@keyframes fade-in-scale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.reaction-picker-wrapper {
+    animation: fade-in-scale 0.3s ease;
+}
+
+/* Individual button stagger animation */
+.reaction-btn {
+    animation: fade-in-scale 0.3s ease;
+    animation-fill-mode: both;
+}
+
+/* Stagger delay for each button */
+.reaction-btn:nth-child(1) { animation-delay: 0.05s; }
+.reaction-btn:nth-child(2) { animation-delay: 0.1s; }
+.reaction-btn:nth-child(3) { animation-delay: 0.15s; }
+.reaction-btn:nth-child(4) { animation-delay: 0.2s; }
+.reaction-btn:nth-child(5) { animation-delay: 0.25s; }
+.reaction-btn:nth-child(6) { animation-delay: 0.3s; }
+.reaction-btn:nth-child(7) { animation-delay: 0.35s; }
+.reaction-btn:nth-child(8) { animation-delay: 0.4s; }
+.reaction-btn:nth-child(9) { animation-delay: 0.45s; }
+.reaction-btn:nth-child(10) { animation-delay: 0.5s; }

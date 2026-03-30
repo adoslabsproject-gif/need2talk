@@ -1,0 +1,54 @@
+{
+    "name": "need2talk/need2talk",
+    "description": "Unified audio sharing platform",
+    "type": "project",
+    "require": {
+        "php": "^8.0",
+        "vlucas/phpdotenv": "^5.4",
+        "monolog/monolog": "^3.9",
+        "phpmailer/phpmailer": "^6.10",
+        "pragmarx/google2fa": "^8.0",
+        "bacon/bacon-qr-code": "^3.0",
+        "php-debugbar/php-debugbar": "^1.22",
+        "sendgrid/sendgrid": "^8.1",
+        "aws/aws-sdk-php": "^3.326",
+        "google/apiclient": "^2.0",
+        "google/recaptcha": "^1.3",
+        "geoip2/geoip2": "^2.13",
+        "firebase/php-jwt": "*",
+        "swoole/ide-helper": "^5.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5",
+        "phpstan/phpstan": "^2.1",
+        "friendsofphp/php-cs-fixer": "^3.64"
+    },
+    "autoload": {
+        "psr-4": {
+            "Need2Talk\\": "app/"
+        },
+        "exclude-from-classmap": [
+            "app/Core/Stubs/"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Need2Talk\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "serve": "php -S localhost:8000 -t public",
+        "test": "phpunit",
+        "fix": "vendor/bin/php-cs-fixer fix",
+        "fix-dry": "vendor/bin/php-cs-fixer fix --dry-run --diff",
+        "stan": "vendor/bin/phpstan analyse --memory-limit=512M",
+        "quality": ["@fix-dry", "@stan"],
+        "clean": "php clear-logs.php --all",
+        "clean:logs": "php clear-logs.php --logs",
+        "clean:debugbar": "php clear-logs.php --debugbar",
+        "clean:mamp": "php clear-logs.php --mamp",
+        "clean:opcache": "php clear-logs.php --opcache && curl -s http://localhost/admin-clear-opcache.php > /dev/null && echo '✅ PHP-FPM OPcache cleared via web'"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

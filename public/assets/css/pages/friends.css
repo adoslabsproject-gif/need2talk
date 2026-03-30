@@ -1,0 +1,222 @@
+/**
+ * FRIENDS PAGE - ENTERPRISE GALAXY STYLES
+ *
+ * Styles for friendship management page
+ * - Tab navigation
+ * - User cards
+ * - Search interface
+ * - Loading states
+ * - Empty states
+ *
+ * @version 1.0.0
+ * @author Claude Code (AI-Orchestrated Development)
+ */
+
+/* ============================================
+   SCROLLBAR UTILITIES
+   ============================================ */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* ============================================
+   TAB NAVIGATION
+   ============================================ */
+.tab-button {
+    position: relative;
+    transition: all 0.2s ease-in-out;
+}
+
+.tab-button.active {
+    color: rgb(168 85 247); /* accent-purple */
+    border-bottom-color: rgb(168 85 247);
+}
+
+.tab-button:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================
+   USER CARDS
+   ============================================ */
+.user-card {
+    transition: all 0.2s ease-in-out;
+}
+
+.user-card:hover {
+    border-color: rgba(168, 85, 247, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.15);
+}
+
+.user-card-avatar {
+    transition: transform 0.2s ease-in-out;
+}
+
+.user-card:hover .user-card-avatar {
+    transform: scale(1.05);
+}
+
+/* ============================================
+   SEARCH INPUT
+   ============================================ */
+.search-input-wrapper {
+    position: relative;
+}
+
+.search-input-icon {
+    pointer-events: none;
+}
+
+.search-input {
+    color: #ffffff !important;           /* Testo bianco */
+    background-color: rgba(17, 24, 39, 0.5) !important;  /* Sfondo grigio scuro */
+    padding-left: 2.5rem !important;     /* Spazio per icona */
+}
+
+.search-input::placeholder {
+    color: rgb(107 114 128) !important;  /* Placeholder grigio */
+    opacity: 1;
+}
+
+.search-input:focus {
+    outline: none;
+    ring: 2px;
+    ring-color: rgb(168 85 247);
+    background-color: rgba(17, 24, 39, 0.7) !important;  /* Sfondo più scuro on focus */
+}
+
+/* ============================================
+   LOADING STATES
+   ============================================ */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* ============================================
+   BADGE COUNTERS
+   ============================================ */
+.badge-counter {
+    min-width: 1.25rem;
+    height: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 9999px;
+    transition: all 0.2s ease-in-out;
+}
+
+.badge-counter.hidden {
+    opacity: 0;
+    transform: scale(0);
+}
+
+/* ============================================
+   TOAST NOTIFICATIONS
+   ============================================ */
+.toast {
+    transform: translateY(0.5rem);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+/* ============================================
+   EMPTY STATES
+   ============================================ */
+.empty-state-icon {
+    width: 4rem;
+    height: 4rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: rgba(168, 85, 247, 0.1);
+    margin-bottom: 1rem;
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+@media (max-width: 640px) {
+    .tab-button {
+        font-size: 0.875rem;
+        padding: 0.75rem 1rem;
+    }
+
+    .user-card {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .user-card-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .user-card-actions button,
+    .user-card-actions a {
+        width: 100%;
+    }
+}
+
+/* ============================================
+   DARK MODE OPTIMIZATION
+   ============================================ */
+@media (prefers-color-scheme: dark) {
+    .tab-button {
+        color: rgb(156 163 175); /* gray-400 */
+    }
+
+    .tab-button.active {
+        color: rgb(168 85 247); /* accent-purple */
+    }
+
+    .user-card {
+        background-color: rgba(17, 24, 39, 0.5);
+        border-color: rgba(168, 85, 247, 0.2);
+    }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+.tab-button:focus-visible,
+.search-input:focus-visible,
+button:focus-visible {
+    outline: 2px solid rgb(168 85 247);
+    outline-offset: 2px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+    .tab-button,
+    .user-card,
+    .user-card-avatar,
+    .toast,
+    .loading-spinner {
+        transition: none;
+        animation: none;
+    }
+}

@@ -1,0 +1,397 @@
+/**
+ * ================================================================================
+ * ONBOARDING TOUR STYLES - ENTERPRISE GALAXY
+ * ================================================================================
+ *
+ * Mobile-first design with emotional UX
+ * Dark theme matching need2talk branding
+ *
+ * @version 1.0.0
+ * @date 2026-01-19
+ */
+
+/* ============================================================================
+   OVERLAY & BASE
+   ============================================================================ */
+
+.onboarding-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    pointer-events: none;
+}
+
+.onboarding-overlay-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 15, 35, 0.85);
+    backdrop-filter: blur(4px);
+    pointer-events: auto;
+}
+
+/* ============================================================================
+   HIGHLIGHT
+   ============================================================================ */
+
+.onboarding-highlight {
+    position: absolute;
+    pointer-events: none;
+    z-index: 10001;
+    box-shadow: 0 0 0 9999px rgba(15, 15, 35, 0.85),
+                0 0 20px rgba(123, 44, 191, 0.5),
+                inset 0 0 20px rgba(123, 44, 191, 0.3);
+    border: 2px solid #7b2cbf;
+    border-radius: 12px;
+    animation: onboarding-pulse 2s ease-in-out infinite;
+}
+
+@keyframes onboarding-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 9999px rgba(15, 15, 35, 0.85),
+                    0 0 20px rgba(123, 44, 191, 0.5),
+                    inset 0 0 20px rgba(123, 44, 191, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 0 9999px rgba(15, 15, 35, 0.85),
+                    0 0 30px rgba(233, 30, 140, 0.6),
+                    inset 0 0 30px rgba(233, 30, 140, 0.4);
+    }
+}
+
+/* ============================================================================
+   MODAL
+   ============================================================================ */
+
+.onboarding-modal {
+    position: fixed;
+    z-index: 10002;
+    pointer-events: auto;
+    max-width: 90vw;
+    width: 380px;
+    animation: onboarding-modal-enter 0.3s ease-out;
+}
+
+@keyframes onboarding-modal-enter {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.onboarding-modal-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f0f23 100%);
+    border: 1px solid rgba(123, 44, 191, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 40px rgba(123, 44, 191, 0.2);
+}
+
+/* Progress bar */
+.onboarding-progress {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.onboarding-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #7b2cbf 0%, #e91e8c 100%);
+    border-radius: 2px;
+    transition: width 0.3s ease-out;
+}
+
+/* Step indicator */
+.onboarding-step-indicator {
+    color: #9ca3af;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+}
+
+/* Title */
+.onboarding-modal-title {
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    line-height: 1.3;
+}
+
+/* Description */
+.onboarding-modal-description {
+    color: #d1d5db;
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.onboarding-modal-description strong {
+    color: #00d9ff;
+    font-weight: 600;
+}
+
+/* Actions */
+.onboarding-modal-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Buttons */
+.onboarding-btn-primary {
+    flex: 1;
+    min-width: 140px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #7b2cbf 0%, #e91e8c 100%);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(123, 44, 191, 0.3);
+}
+
+.onboarding-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(123, 44, 191, 0.4);
+}
+
+.onboarding-btn-primary:active {
+    transform: translateY(0);
+}
+
+.onboarding-btn-secondary {
+    flex: 1;
+    min-width: 140px;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #d1d5db;
+    font-size: 15px;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.onboarding-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.onboarding-btn-back {
+    padding: 10px 16px;
+    background: transparent;
+    color: #9ca3af;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.onboarding-btn-back:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #ffffff;
+}
+
+.onboarding-btn-skip {
+    padding: 10px 16px;
+    background: transparent;
+    color: #9ca3af;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: underline;
+}
+
+.onboarding-btn-skip:hover {
+    color: #ffffff;
+}
+
+/* ============================================================================
+   WELCOME MODAL
+   ============================================================================ */
+
+.onboarding-welcome-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 15, 35, 0.95);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: onboarding-fade-in 0.3s ease-out;
+}
+
+@keyframes onboarding-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.onboarding-welcome-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f0f23 100%);
+    border: 1px solid rgba(123, 44, 191, 0.3);
+    border-radius: 20px;
+    padding: 40px 32px;
+    max-width: 90vw;
+    width: 440px;
+    text-align: center;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6),
+                0 0 60px rgba(123, 44, 191, 0.3);
+    animation: onboarding-welcome-enter 0.4s ease-out;
+}
+
+@keyframes onboarding-welcome-enter {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(40px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.onboarding-welcome-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    animation: onboarding-bounce 1s ease-in-out infinite;
+}
+
+@keyframes onboarding-bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* ============================================================================
+   SUCCESS MODAL
+   ============================================================================ */
+
+.onboarding-success {
+    text-align: center;
+}
+
+.onboarding-success-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+    animation: onboarding-success-burst 0.6s ease-out;
+}
+
+@keyframes onboarding-success-burst {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* ============================================================================
+   FINAL STEP
+   ============================================================================ */
+
+.onboarding-final-step {
+    text-align: center;
+}
+
+/* ============================================================================
+   MOBILE RESPONSIVE
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    .onboarding-modal {
+        width: 90vw;
+        max-width: 340px;
+    }
+
+    .onboarding-modal-content {
+        padding: 20px;
+    }
+
+    .onboarding-modal-title {
+        font-size: 20px;
+    }
+
+    .onboarding-modal-description {
+        font-size: 14px;
+    }
+
+    .onboarding-btn-primary,
+    .onboarding-btn-secondary {
+        width: 100%;
+        min-width: auto;
+    }
+
+    .onboarding-modal-actions {
+        flex-direction: column;
+    }
+
+    .onboarding-welcome-content {
+        padding: 32px 24px;
+        width: 90vw;
+        max-width: 360px;
+    }
+}
+
+/* ============================================================================
+   ACCESSIBILITY
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    .onboarding-highlight,
+    .onboarding-modal,
+    .onboarding-welcome-modal,
+    .onboarding-welcome-icon,
+    .onboarding-success-icon {
+        animation: none !important;
+    }
+}
+
+/* Focus styles for keyboard navigation */
+.onboarding-btn-primary:focus,
+.onboarding-btn-secondary:focus,
+.onboarding-btn-back:focus,
+.onboarding-btn-skip:focus {
+    outline: 2px solid #00d9ff;
+    outline-offset: 2px;
+}

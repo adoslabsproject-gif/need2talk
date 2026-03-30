@@ -1,0 +1,1325 @@
+/**
+ * Diary Timeline Story - ENTERPRISE V12 CSS
+ *
+ * BEM Naming Convention:
+ * Block: .diary-timeline-story
+ * Elements: __element
+ * Modifiers: --modifier
+ *
+ * Design: Glassmorphism + Purple gradient theme
+ * NOTE: This styles the STORY column only, NOT the calendar!
+ *
+ * @package need2talk/Lightning
+ * @version 12.0.0
+ */
+
+/* ============================================================================
+   MAIN CONTAINER
+   ============================================================================ */
+
+.diary-timeline-story {
+    position: relative;
+    background: linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(17, 24, 39, 0.85) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    min-height: 400px;
+}
+
+.diary-timeline-story::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #a855f7, transparent);
+}
+
+/* ============================================================================
+   HEADER
+   ============================================================================ */
+
+.diary-timeline-story__header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid rgba(139, 92, 246, 0.12);
+}
+
+.diary-timeline-story__title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.diary-timeline-story__title-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.diary-timeline-story__icon {
+    font-size: 1.75rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.diary-timeline-story__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.diary-timeline-story__subtitle {
+    font-size: 0.8125rem;
+    color: #9ca3af;
+    margin: 0;
+}
+
+.diary-timeline-story__count {
+    text-align: right;
+}
+
+.diary-timeline-story__count-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #a855f7;
+    line-height: 1;
+}
+
+.diary-timeline-story__count-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ============================================================================
+   FILTER BADGE
+   ============================================================================ */
+
+.diary-timeline-story__filter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 0.75rem;
+    padding: 0.875rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.diary-timeline-story__filter-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.diary-timeline-story__filter-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: #60a5fa;
+}
+
+.diary-timeline-story__filter-text {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #93c5fd;
+}
+
+.diary-timeline-story__filter-clear {
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #bfdbfe;
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.diary-timeline-story__filter-clear:hover {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.6);
+}
+
+/* ============================================================================
+   PRIVACY NOTICE
+   ============================================================================ */
+
+.diary-timeline-story__privacy {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 0.625rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.diary-timeline-story__privacy-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #a78bfa;
+    flex-shrink: 0;
+}
+
+.diary-timeline-story__privacy-text {
+    font-size: 0.8125rem;
+    color: #c4b5fd;
+}
+
+.diary-timeline-story__privacy-text strong {
+    color: #a855f7;
+}
+
+/* ============================================================================
+   ENTRIES CONTAINER
+   ============================================================================ */
+
+.diary-timeline-story__entries {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* ============================================================================
+   TIME GROUP (Date Separator)
+   ============================================================================ */
+
+.diary-timeline-story__time-group {
+    margin-bottom: 1rem;
+}
+
+.diary-timeline-story__time-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.diary-timeline-story__time-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(75, 85, 99, 0.5), transparent);
+}
+
+.diary-timeline-story__time-badge {
+    padding: 0.5rem 1rem;
+    background: rgba(31, 41, 55, 0.8);
+    border: 1px solid rgba(75, 85, 99, 0.4);
+    border-radius: 0.5rem;
+    margin: 0 1rem;
+}
+
+.diary-timeline-story__time-date {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.diary-timeline-story__time-relative {
+    font-size: 0.6875rem;
+    color: #6b7280;
+    margin-top: 0.125rem;
+}
+
+.diary-timeline-story__time-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* ============================================================================
+   SINGLE ENTRY CARD
+   ============================================================================ */
+
+.diary-timeline-story__entry {
+    position: relative;
+    background: rgba(31, 41, 55, 0.5);
+    border: 1px solid rgba(75, 85, 99, 0.3);
+    border-radius: 0.875rem;
+    padding: 1.25rem;
+    transition: all 0.2s ease;
+}
+
+.diary-timeline-story__entry:hover {
+    border-color: rgba(139, 92, 246, 0.3);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.diary-timeline-story__entry-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.diary-timeline-story__entry-emotion {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.diary-timeline-story__entry-emoji {
+    font-size: 2rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.diary-timeline-story__entry-emotion-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.diary-timeline-story__entry-emotion-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.diary-timeline-story__entry-intensity {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.diary-timeline-story__entry-intensity-bar {
+    display: flex;
+    gap: 2px;
+}
+
+.diary-timeline-story__entry-intensity-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(75, 85, 99, 0.5);
+}
+
+.diary-timeline-story__entry-intensity-dot--active {
+    background: #a855f7;
+    box-shadow: 0 0 6px rgba(168, 85, 247, 0.5);
+}
+
+.diary-timeline-story__entry-intensity-label {
+    font-size: 0.6875rem;
+    color: #6b7280;
+    margin-left: 0.25rem;
+}
+
+.diary-timeline-story__entry-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.diary-timeline-story__entry-action {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid rgba(75, 85, 99, 0.4);
+    border-radius: 0.375rem;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.diary-timeline-story__entry-action:hover {
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.diary-timeline-story__entry-action-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* ============================================================================
+   ENTRY CONTENT
+   ============================================================================ */
+
+.diary-timeline-story__entry-text {
+    font-size: 0.875rem;
+    line-height: 1.65;
+    color: #d1d5db;
+    margin-bottom: 1rem;
+    white-space: pre-wrap;
+}
+
+.diary-timeline-story__entry-text--encrypted {
+    font-style: italic;
+    color: #9ca3af;
+}
+
+/* ============================================================================
+   ENTRY PHOTO
+   ============================================================================ */
+
+.diary-timeline-story__entry-photo {
+    margin-bottom: 1rem;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: rgba(17, 24, 39, 0.5);
+    border: 1px solid rgba(75, 85, 99, 0.3);
+}
+
+.diary-timeline-story__entry-photo-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    color: #6b7280;
+}
+
+.diary-timeline-story__entry-photo-placeholder-icon {
+    width: 2rem;
+    height: 2rem;
+    margin-bottom: 0.5rem;
+    animation: diary-timeline-story-spin 1s linear infinite;
+}
+
+@keyframes diary-timeline-story-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.diary-timeline-story__entry-photo-img {
+    width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+    display: block;
+}
+
+.diary-timeline-story__entry-photo-img--hidden {
+    display: none;
+}
+
+/* ============================================================================
+   ENTRY AUDIO PLAYER
+   ============================================================================ */
+
+.diary-timeline-story__entry-audio {
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.diary-timeline-story__audio-player {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.diary-timeline-story__audio-play {
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.diary-timeline-story__audio-play:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+}
+
+.diary-timeline-story__audio-play-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.diary-timeline-story__audio-progress {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.diary-timeline-story__audio-bar {
+    height: 6px;
+    background: rgba(75, 85, 99, 0.4);
+    border-radius: 3px;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.diary-timeline-story__audio-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #7c3aed, #a855f7);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.1s linear;
+}
+
+.diary-timeline-story__audio-time {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6875rem;
+    color: #6b7280;
+}
+
+.diary-timeline-story__audio-duration {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #a78bfa;
+    background: rgba(139, 92, 246, 0.15);
+    border-radius: 9999px;
+    flex-shrink: 0;
+}
+
+/* ============================================================================
+   ENTRY FOOTER (Time)
+   ============================================================================ */
+
+.diary-timeline-story__entry-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(75, 85, 99, 0.2);
+}
+
+.diary-timeline-story__entry-time {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.diary-timeline-story__entry-type {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.6875rem;
+    color: #9ca3af;
+    background: rgba(75, 85, 99, 0.2);
+    border-radius: 9999px;
+}
+
+.diary-timeline-story__entry-type-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
+/* ============================================================================
+   LOAD MORE BUTTON
+   ============================================================================ */
+
+.diary-timeline-story__load-more {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+
+.diary-timeline-story__load-more-btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: linear-gradient(135deg, #6b21a8, #7c3aed);
+    border: none;
+    border-radius: 0.625rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(107, 33, 168, 0.3);
+}
+
+.diary-timeline-story__load-more-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(107, 33, 168, 0.4);
+}
+
+/* ============================================================================
+   EMPTY STATE
+   ============================================================================ */
+
+.diary-timeline-story__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1.5rem;
+    text-align: center;
+}
+
+.diary-timeline-story__empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.6;
+}
+
+.diary-timeline-story__empty-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 0.5rem 0;
+}
+
+.diary-timeline-story__empty-text {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+    max-width: 280px;
+}
+
+/* ============================================================================
+   LOADING STATE
+   ============================================================================ */
+
+.diary-timeline-story__loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+}
+
+.diary-timeline-story__loading-spinner {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 3px solid rgba(139, 92, 246, 0.2);
+    border-top-color: #a855f7;
+    border-radius: 50%;
+    animation: diary-timeline-story-spin 0.8s linear infinite;
+    margin-bottom: 1rem;
+}
+
+.diary-timeline-story__loading-text {
+    font-size: 0.875rem;
+    color: #9ca3af;
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+
+@media (max-width: 640px) {
+    .diary-timeline-story {
+        padding: 1rem;
+        border-radius: 0.75rem;
+    }
+
+    .diary-timeline-story__title {
+        font-size: 1.25rem;
+    }
+
+    .diary-timeline-story__entry {
+        padding: 1rem;
+    }
+
+    .diary-timeline-story__entry-emoji {
+        font-size: 1.5rem;
+    }
+
+    .diary-timeline-story__audio-player {
+        flex-wrap: wrap;
+    }
+}
+
+/* ============================================================================
+   LEGACY CLASS SUPPORT (JournalTimeline.js Compatibility)
+   These styles apply to HTML generated by the existing JavaScript code.
+   Using high specificity with #journal-timeline-container and !important
+   ============================================================================ */
+
+/* Main timeline container */
+.journal-timeline-main,
+#journal-timeline-container {
+    position: relative !important;
+    background: linear-gradient(165deg,
+        rgba(17, 24, 39, 0.98) 0%,
+        rgba(31, 41, 55, 0.95) 50%,
+        rgba(17, 24, 39, 0.98) 100%) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(139, 92, 246, 0.25) !important;
+    border-radius: 1.25rem !important;
+    padding: 1.75rem !important;
+    min-height: 400px !important;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        0 0 40px rgba(139, 92, 246, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.journal-timeline-main::before,
+#journal-timeline-container::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 3px !important;
+    background: linear-gradient(90deg,
+        #7c3aed, #a855f7, #ec4899, #a855f7, #7c3aed) !important;
+    background-size: 200% 100% !important;
+    animation: timeline-gradient-flow 4s ease infinite !important;
+    border-radius: 1.25rem 1.25rem 0 0 !important;
+}
+
+@keyframes timeline-gradient-flow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* Timeline layout */
+.journal-timeline-layout {
+    display: grid !important;
+    grid-template-columns: 280px 1fr !important;
+    gap: 1.5rem !important;
+}
+
+@media (max-width: 1024px) {
+    .journal-timeline-layout {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Entry card - Premium glassmorphism */
+#journal-timeline-container .entry-card,
+.journal-timeline-main .entry-card {
+    position: relative !important;
+    background: linear-gradient(145deg,
+        rgba(31, 41, 55, 0.7) 0%,
+        rgba(17, 24, 39, 0.85) 50%,
+        rgba(31, 41, 55, 0.6) 100%) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(139, 92, 246, 0.2) !important;
+    border-radius: 1rem !important;
+    padding: 1.5rem !important;
+    margin-bottom: 1.25rem !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    overflow: hidden !important;
+    box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Decorative left border */
+#journal-timeline-container .entry-card::before,
+.journal-timeline-main .entry-card::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 4px !important;
+    height: 100% !important;
+    background: linear-gradient(180deg, #8B5CF6 0%, #EC4899 50%, #8B5CF6 100%) !important;
+    border-radius: 1rem 0 0 1rem !important;
+    opacity: 0.5 !important;
+    transition: opacity 0.3s ease, width 0.3s ease !important;
+}
+
+#journal-timeline-container .entry-card:hover,
+.journal-timeline-main .entry-card:hover {
+    border-color: rgba(139, 92, 246, 0.4) !important;
+    box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(139, 92, 246, 0.15),
+        0 0 50px rgba(139, 92, 246, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    transform: translateY(-4px) scale(1.005) !important;
+}
+
+#journal-timeline-container .entry-card:hover::before,
+.journal-timeline-main .entry-card:hover::before {
+    opacity: 1 !important;
+    width: 5px !important;
+}
+
+#journal-timeline-container .entry-card.trash-entry,
+.journal-timeline-main .entry-card.trash-entry {
+    opacity: 0.6 !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+#journal-timeline-container .entry-card.trash-entry::before,
+.journal-timeline-main .entry-card.trash-entry::before {
+    background: linear-gradient(180deg, #ef4444, #dc2626) !important;
+}
+
+/* Entry header */
+#journal-timeline-container .entry-header,
+.journal-timeline-main .entry-header {
+    margin-bottom: 1rem !important;
+    padding-bottom: 0.75rem !important;
+    border-bottom: 1px solid rgba(75, 85, 99, 0.2) !important;
+}
+
+/* Emotion indicator - Floating orb design */
+#journal-timeline-container .emotion-indicator,
+.journal-timeline-main .emotion-indicator {
+    width: 3.25rem !important;
+    height: 3.25rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 1rem !important;
+    background: linear-gradient(145deg,
+        rgba(139, 92, 246, 0.3),
+        rgba(168, 85, 247, 0.2)) !important;
+    border: 1px solid rgba(139, 92, 246, 0.4) !important;
+    box-shadow:
+        0 4px 16px rgba(139, 92, 246, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    transition: all 0.3s ease !important;
+}
+
+#journal-timeline-container .emotion-indicator:hover,
+.journal-timeline-main .emotion-indicator:hover {
+    transform: scale(1.1) rotate(5deg) !important;
+    box-shadow: 0 6px 24px rgba(139, 92, 246, 0.5) !important;
+}
+
+#journal-timeline-container .emotion-indicator.intensity-glow-low,
+.journal-timeline-main .emotion-indicator.intensity-glow-low {
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2) !important;
+}
+
+#journal-timeline-container .emotion-indicator.intensity-glow-medium,
+.journal-timeline-main .emotion-indicator.intensity-glow-medium {
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4) !important;
+}
+
+#journal-timeline-container .emotion-indicator.intensity-glow-high,
+.journal-timeline-main .emotion-indicator.intensity-glow-high {
+    box-shadow:
+        0 6px 28px rgba(139, 92, 246, 0.6),
+        0 0 40px rgba(139, 92, 246, 0.3) !important;
+}
+
+/* Badge styles */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    border-radius: 9999px;
+}
+
+.badge-encrypted {
+    color: #a78bfa;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.badge-public {
+    color: #34d399;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* Entry content */
+.entry-content {
+    margin-top: 1rem;
+}
+
+.entry-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 0.5rem 0;
+}
+
+.entry-description {
+    font-size: 0.875rem;
+    color: #d1d5db;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.entry-text {
+    padding: 0.75rem;
+    background: rgba(17, 24, 39, 0.5);
+    border: 1px solid rgba(75, 85, 99, 0.2);
+    border-radius: 0.5rem;
+}
+
+/* Entry photo */
+.entry-photo {
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: rgba(17, 24, 39, 0.5);
+    border: 1px solid rgba(75, 85, 99, 0.3);
+}
+
+.encrypted-photo-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    color: #6b7280;
+}
+
+.decrypted-photo {
+    width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.decrypted-photo:hover {
+    opacity: 0.9;
+}
+
+.entry-photo-expanded {
+    max-height: none !important;
+    object-fit: contain;
+}
+
+/* Audio player */
+.journal-audio-player {
+    margin-top: 1rem;
+}
+
+.audio-player-container {
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 0.75rem;
+    padding: 1rem;
+}
+
+.play-audio-btn {
+    width: 3.5rem;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.play-audio-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+}
+
+.play-audio-btn .play-icon,
+.play-audio-btn .pause-icon,
+.play-audio-btn .loading-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+/* Audio progress */
+.audio-progress-container {
+    position: relative;
+    height: 2.5rem;
+    background: rgba(17, 24, 39, 0.5);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.audio-progress-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(124, 58, 237, 0.5), rgba(168, 85, 247, 0.5));
+    transition: width 0.1s linear;
+}
+
+.audio-playhead {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 2px;
+    background: #a855f7;
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.8);
+    transition: left 0.1s linear;
+}
+
+/* Audio time display */
+.audio-time-current,
+.audio-time-total {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    font-family: 'SF Mono', 'Menlo', monospace;
+}
+
+/* Intensity bar */
+.intensity-bar {
+    display: flex;
+    gap: 2px;
+}
+
+.intensity-bar .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(75, 85, 99, 0.5);
+}
+
+.intensity-bar .dot.active {
+    background: #a855f7;
+    box-shadow: 0 0 6px rgba(168, 85, 247, 0.5);
+}
+
+/* Time group separator */
+.time-group {
+    margin-bottom: 1.5rem;
+}
+
+.time-group-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.time-group-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(75, 85, 99, 0.5), transparent);
+}
+
+.time-group-badge {
+    padding: 0.5rem 1rem;
+    background: rgba(31, 41, 55, 0.8);
+    border: 1px solid rgba(75, 85, 99, 0.4);
+    border-radius: 0.5rem;
+    margin: 0 1rem;
+}
+
+.time-group-date {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.time-group-relative {
+    font-size: 0.6875rem;
+    color: #6b7280;
+}
+
+/* Delete button */
+.delete-entry-btn {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid rgba(75, 85, 99, 0.4);
+    border-radius: 0.375rem;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.delete-entry-btn:hover {
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* Restore button (trash view) */
+.restore-entry-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #34d399;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.restore-entry-btn:hover {
+    background: rgba(16, 185, 129, 0.25);
+    border-color: rgba(16, 185, 129, 0.5);
+}
+
+/* Loading state */
+.timeline-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+}
+
+.timeline-loading-spinner {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 3px solid rgba(139, 92, 246, 0.2);
+    border-top-color: #a855f7;
+    border-radius: 50%;
+    animation: diary-timeline-story-spin 0.8s linear infinite;
+    margin-bottom: 1rem;
+}
+
+/* Empty state */
+.timeline-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1.5rem;
+    text-align: center;
+}
+
+.timeline-empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.6;
+}
+
+.timeline-empty-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 0.5rem 0;
+}
+
+.timeline-empty-text {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+/* Protected state (diary locked) */
+.timeline-protected {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+}
+
+.timeline-protected-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+}
+
+.timeline-protected-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 0.75rem 0;
+}
+
+.timeline-protected-text {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    margin: 0 0 1.5rem 0;
+    max-width: 300px;
+}
+
+.timeline-protected-btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: linear-gradient(135deg, #6b21a8, #7c3aed);
+    border: none;
+    border-radius: 0.625rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(107, 33, 168, 0.3);
+}
+
+.timeline-protected-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(107, 33, 168, 0.4);
+}
+
+/* Filter badge */
+.filter-active-badge {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 0.75rem;
+    padding: 0.875rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.filter-active-badge-text {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #93c5fd;
+}
+
+.clear-filter-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #bfdbfe;
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clear-filter-btn:hover {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.6);
+}
+
+/* Load more button */
+.load-more-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+
+.load-more-btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: linear-gradient(135deg, #6b21a8, #7c3aed);
+    border: none;
+    border-radius: 0.625rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(107, 33, 168, 0.3);
+}
+
+.load-more-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(107, 33, 168, 0.4);
+}
+
+/* Privacy notice */
+.privacy-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 0.625rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.privacy-notice svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #a78bfa;
+    flex-shrink: 0;
+}
+
+.privacy-notice span {
+    font-size: 0.8125rem;
+    color: #c4b5fd;
+}
+
+/* Waveform bars (decorative) */
+.waveform-bar {
+    width: 3px;
+    background: rgba(168, 85, 247, 0.3);
+    border-radius: 2px;
+    margin: 0 1px;
+}
+
+/* ============================================================================
+   V12: PHOTO LIGHTBOX
+   Fullscreen overlay for viewing journal photos
+   ============================================================================ */
+
+.journal-photo-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.journal-photo-lightbox--visible {
+    opacity: 1;
+}
+
+.journal-photo-lightbox__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+    cursor: pointer;
+}
+
+.journal-photo-lightbox__content {
+    position: relative;
+    z-index: 1;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.journal-photo-lightbox__image {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.journal-photo-lightbox--visible .journal-photo-lightbox__image {
+    transform: scale(1);
+}
+
+.journal-photo-lightbox__close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 2;
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.journal-photo-lightbox__close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+}
+
+.journal-photo-lightbox__close svg {
+    width: 1.5rem;
+    height: 1.5rem;
+}

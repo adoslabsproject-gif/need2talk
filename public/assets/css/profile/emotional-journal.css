@@ -1,0 +1,762 @@
+/**
+ * Emotional Journal Recorder - ENTERPRISE V12 CSS
+ *
+ * BEM Naming Convention:
+ * Block: .journal-diary-recorder
+ * Elements: __element
+ * Modifiers: --modifier
+ *
+ * Design: Glassmorphism + Purple gradient theme
+ * Performance: GPU-accelerated animations
+ *
+ * @package need2talk/Lightning
+ * @version 12.0.0
+ */
+
+/* ============================================================================
+   MAIN CONTAINER
+   ============================================================================ */
+
+.journal-diary-recorder {
+    position: relative;
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(31, 41, 55, 0.9) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow:
+        0 4px 24px rgba(0, 0, 0, 0.3),
+        0 0 40px rgba(139, 92, 246, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+.journal-diary-recorder::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #7c3aed, #a855f7, #c084fc, #a855f7, #7c3aed);
+    background-size: 200% 100%;
+    animation: journal-diary-recorder-gradient 3s ease infinite;
+}
+
+@keyframes journal-diary-recorder-gradient {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* ============================================================================
+   HEADER
+   ============================================================================ */
+
+.journal-diary-recorder__header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.journal-diary-recorder__title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+.journal-diary-recorder__icon {
+    font-size: 2rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.journal-diary-recorder__title-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.journal-diary-recorder__title {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.journal-diary-recorder__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: #a78bfa;
+    background: rgba(139, 92, 246, 0.15);
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    width: fit-content;
+}
+
+.journal-diary-recorder__subtitle {
+    font-size: 0.8125rem;
+    color: #9ca3af;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.journal-diary-recorder__subtitle strong {
+    color: #a855f7;
+}
+
+/* ============================================================================
+   AUDIO RECORD BUTTON
+   ============================================================================ */
+
+.journal-diary-recorder__audio-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.journal-diary-recorder__audio-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.journal-diary-recorder__audio-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #e5e7eb;
+}
+
+.journal-diary-recorder__audio-hint {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.journal-diary-recorder__audio-btn {
+    position: relative;
+    width: 3.5rem;
+    height: 3.5rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+.journal-diary-recorder__audio-btn-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #dc2626, #991b1b);
+    opacity: 0.3;
+    animation: journal-diary-recorder-pulse 2s ease-in-out infinite;
+}
+
+@keyframes journal-diary-recorder-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.3; }
+    50% { transform: scale(1.15); opacity: 0.15; }
+}
+
+.journal-diary-recorder__audio-btn-inner {
+    position: absolute;
+    inset: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow:
+        0 4px 12px rgba(239, 68, 68, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transition: all 0.2s ease;
+}
+
+.journal-diary-recorder__audio-btn:hover .journal-diary-recorder__audio-btn-inner {
+    transform: scale(1.05);
+    box-shadow:
+        0 6px 20px rgba(239, 68, 68, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.journal-diary-recorder__audio-btn:active .journal-diary-recorder__audio-btn-inner {
+    transform: scale(0.95);
+}
+
+.journal-diary-recorder__audio-btn-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: white;
+}
+
+/* ============================================================================
+   DATE CARD
+   ============================================================================ */
+
+.journal-diary-recorder__date-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(31, 41, 55, 0.6);
+    border: 1px solid rgba(75, 85, 99, 0.3);
+    border-radius: 0.75rem;
+    padding: 0.875rem 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.journal-diary-recorder__date-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.journal-diary-recorder__date-label {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.journal-diary-recorder__date-value {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.journal-diary-recorder__date-icon {
+    font-size: 1.75rem;
+}
+
+/* ============================================================================
+   SECTIONS
+   ============================================================================ */
+
+.journal-diary-recorder__section {
+    margin-bottom: 1.5rem;
+}
+
+.journal-diary-recorder__label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #e5e7eb;
+    margin-bottom: 0.625rem;
+}
+
+.journal-diary-recorder__label-icon {
+    width: 1.125rem;
+    height: 1.125rem;
+    color: #a855f7;
+}
+
+.journal-diary-recorder__required {
+    color: #f87171;
+}
+
+.journal-diary-recorder__optional {
+    font-weight: 400;
+    color: #6b7280;
+}
+
+.journal-diary-recorder__hint {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin: 0.5rem 0 0 0;
+}
+
+/* ============================================================================
+   EMOTIONS GRID (2 rows x 5 columns)
+   ============================================================================ */
+
+.journal-diary-recorder__emotions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.journal-diary-recorder__emotions-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.journal-diary-recorder__emotions-row-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-left: 0.25rem;
+}
+
+.journal-diary-recorder__emotions-row-label--positive {
+    color: #34d399;
+}
+
+.journal-diary-recorder__emotions-row-label--negative {
+    color: #9ca3af;
+}
+
+.journal-diary-recorder__emotions-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+}
+
+.journal-diary-recorder__emotion-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.625rem 0.25rem;
+    background: rgba(31, 41, 55, 0.6);
+    border: 1px solid rgba(75, 85, 99, 0.4);
+    border-radius: 0.625rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.journal-diary-recorder__emotion-chip:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.4);
+    transform: translateY(-2px);
+}
+
+.journal-diary-recorder__emotion-chip--active {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: #a855f7;
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.3);
+}
+
+.journal-diary-recorder__emotion-chip-icon {
+    font-size: 1.375rem;
+}
+
+.journal-diary-recorder__emotion-chip-name {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: #d1d5db;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.journal-diary-recorder__emotion-chip--active .journal-diary-recorder__emotion-chip-name {
+    color: #c4b5fd;
+}
+
+/* ============================================================================
+   INTENSITY SLIDER
+   ============================================================================ */
+
+.journal-diary-recorder__intensity-value {
+    color: #a855f7;
+    font-weight: 700;
+}
+
+.journal-diary-recorder__slider-container {
+    position: relative;
+    padding: 0.5rem 0;
+}
+
+.journal-diary-recorder__slider {
+    width: 100%;
+    height: 8px;
+    background: rgba(31, 41, 55, 0.8);
+    border-radius: 4px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+.journal-diary-recorder__slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    box-shadow:
+        0 2px 8px rgba(139, 92, 246, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.journal-diary-recorder__slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow:
+        0 4px 12px rgba(139, 92, 246, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.journal-diary-recorder__slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.5);
+    cursor: pointer;
+}
+
+.journal-diary-recorder__slider-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.375rem;
+    font-size: 0.6875rem;
+    color: #6b7280;
+}
+
+/* ============================================================================
+   TEXTAREA
+   ============================================================================ */
+
+.journal-diary-recorder__textarea {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+    font-family: inherit;
+    line-height: 1.6;
+    color: #e5e7eb;
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(75, 85, 99, 0.4);
+    border-radius: 0.75rem;
+    resize: vertical;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.journal-diary-recorder__textarea::placeholder {
+    color: #6b7280;
+}
+
+.journal-diary-recorder__textarea:focus {
+    border-color: rgba(139, 92, 246, 0.6);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+    background: rgba(17, 24, 39, 0.8);
+}
+
+/* ============================================================================
+   FILE UPLOAD
+   ============================================================================ */
+
+.journal-diary-recorder__file-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.journal-diary-recorder__file-input {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.journal-diary-recorder__file-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #c4b5fd;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    pointer-events: none;
+}
+
+.journal-diary-recorder__file-wrapper:hover .journal-diary-recorder__file-button {
+    background: rgba(139, 92, 246, 0.25);
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+.journal-diary-recorder__file-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.journal-diary-recorder__file-name {
+    font-size: 0.8125rem;
+    color: #6b7280;
+}
+
+/* ============================================================================
+   PHOTO PREVIEW
+   ============================================================================ */
+
+.journal-diary-recorder__photo-preview {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(17, 24, 39, 0.5);
+    border: 1px solid rgba(75, 85, 99, 0.3);
+    border-radius: 0.75rem;
+}
+
+.journal-diary-recorder__photo-img {
+    max-width: 120px;
+    max-height: 120px;
+    object-fit: cover;
+    border-radius: 0.5rem;
+    border: 2px solid rgba(139, 92, 246, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.journal-diary-recorder__photo-remove {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #fca5a5;
+    background: rgba(127, 29, 29, 0.3);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.journal-diary-recorder__photo-remove:hover {
+    background: rgba(127, 29, 29, 0.5);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.journal-diary-recorder__photo-remove svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* ============================================================================
+   SAVE BUTTON
+   ============================================================================ */
+
+.journal-diary-recorder__actions {
+    margin-top: 1.5rem;
+}
+
+.journal-diary-recorder__save-btn {
+    position: relative;
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: transparent;
+    border: none;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.journal-diary-recorder__save-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.journal-diary-recorder__save-btn-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    border-radius: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.journal-diary-recorder__save-btn:not(:disabled):hover .journal-diary-recorder__save-btn-bg {
+    transform: scale(1.02);
+    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+}
+
+.journal-diary-recorder__save-btn:not(:disabled):active .journal-diary-recorder__save-btn-bg {
+    transform: scale(0.98);
+}
+
+.journal-diary-recorder__save-btn-content {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    z-index: 1;
+}
+
+.journal-diary-recorder__save-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+/* ============================================================================
+   STATUS MESSAGES
+   ============================================================================ */
+
+.journal-diary-recorder__status {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.8125rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.journal-diary-recorder__status-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+}
+
+.journal-diary-recorder__status--success {
+    color: #6ee7b7;
+    background: rgba(6, 78, 59, 0.3);
+    border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.journal-diary-recorder__status--error {
+    color: #fca5a5;
+    background: rgba(127, 29, 29, 0.3);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.journal-diary-recorder__status--info {
+    color: #93c5fd;
+    background: rgba(30, 58, 138, 0.3);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* ============================================================================
+   LEGACY EMOTION CLASSES (for JS compatibility)
+   ============================================================================ */
+
+.emotion-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.emotion-row-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-left: 0.25rem;
+}
+
+.emotion-row-label.emotion-positive {
+    color: #34d399;
+}
+
+.emotion-row-label.emotion-negative {
+    color: #9ca3af;
+}
+
+.emotion-row-buttons {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+}
+
+.emotion-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.625rem 0.25rem;
+    background: rgba(31, 41, 55, 0.6);
+    border: 1px solid rgba(75, 85, 99, 0.4);
+    border-radius: 0.625rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.emotion-chip:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.4);
+    transform: translateY(-2px);
+}
+
+.emotion-chip.active {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: #a855f7;
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.3);
+}
+
+.emotion-chip-icon {
+    font-size: 1.375rem;
+}
+
+.emotion-chip-name {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: #d1d5db;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.emotion-chip.active .emotion-chip-name {
+    color: #c4b5fd;
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+
+@media (max-width: 480px) {
+    .journal-diary-recorder {
+        padding: 1rem;
+        border-radius: 0.75rem;
+    }
+
+    .journal-diary-recorder__title {
+        font-size: 1.25rem;
+    }
+
+    .emotion-row-buttons,
+    .journal-diary-recorder__emotions-grid {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.375rem;
+    }
+
+    .emotion-chip,
+    .journal-diary-recorder__emotion-chip {
+        padding: 0.5rem 0.125rem;
+    }
+
+    .emotion-chip-icon,
+    .journal-diary-recorder__emotion-chip-icon {
+        font-size: 1.125rem;
+    }
+
+    .emotion-chip-name,
+    .journal-diary-recorder__emotion-chip-name {
+        font-size: 0.5625rem;
+    }
+
+    .journal-diary-recorder__audio-section {
+        padding: 0.75rem 1rem;
+    }
+
+    .journal-diary-recorder__audio-btn {
+        width: 3rem;
+        height: 3rem;
+    }
+}

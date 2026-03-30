@@ -1,0 +1,40 @@
+/**
+ * Page Transition - Simple Fade
+ *
+ * PERFORMANCE:
+ * - Minimal CSS overhead
+ * - 60fps smooth fade
+ * - No side effects on layout
+ *
+ * BROWSER SUPPORT:
+ * - All modern browsers (Chrome, Safari, Firefox, Edge)
+ */
+
+/* ============================================
+   REDUCED MOTION (Accessibility)
+   ============================================ */
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    /* When user has reduced motion enabled, disable all transitions */
+    * {
+        transition-duration: 1ms !important;
+        animation-duration: 1ms !important;
+    }
+}
+
+/* ============================================
+   NOTES
+   ============================================ */
+
+/*
+ * This CSS file is minimal by design.
+ * The transition effect is handled entirely in JavaScript via an overlay element.
+ *
+ * Why no CSS on body/html?
+ * - Prevents interference with position: fixed elements (debugbar, cookies)
+ * - Prevents z-index stacking issues
+ * - Prevents transform-based positioning bugs
+ *
+ * The overlay is created dynamically with inline styles for maximum reliability.
+ */

@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# 🚀 Start 4 Email Workers via systemd (Linux)
+# Capacity: ~1,600 emails in batch
+
+WORKER_COUNT=4 "$(dirname "$0")/systemd-email-control.sh" start

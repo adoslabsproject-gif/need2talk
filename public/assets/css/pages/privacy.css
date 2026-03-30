@@ -1,0 +1,144 @@
+/**
+ * PRIVACY PAGE CSS - need2talk
+ * Stili specifici per la pagina privacy identici
+ */
+
+.privacy-page {
+    min-height: 100vh;
+    padding-top: 4rem;
+}
+
+.privacy-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.privacy-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.privacy-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-pink) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1rem;
+}
+
+.privacy-subtitle {
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.privacy-updated {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.privacy-content {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    box-shadow: var(--glass-shadow);
+}
+
+.privacy-section {
+    margin-bottom: 2.5rem;
+}
+
+.privacy-section h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--primary-purple);
+    padding-bottom: 0.5rem;
+}
+
+.privacy-section h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 1.5rem 0 0.75rem 0;
+}
+
+.privacy-section p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.privacy-section ul {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.privacy-section li {
+    margin-bottom: 0.5rem;
+}
+
+.privacy-highlight {
+    background: rgba(147, 51, 234, 0.1);
+    border-left: 4px solid var(--primary-purple);
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 0.5rem;
+}
+
+.privacy-contact {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.privacy-contact h3 {
+    color: #22c55e;
+    margin-bottom: 0.5rem;
+}
+
+.privacy-contact p {
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.privacy-contact a {
+    color: var(--primary-purple);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.privacy-contact a:hover {
+    color: var(--primary-pink);
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .privacy-container {
+        padding: 1rem;
+    }
+    
+    .privacy-title {
+        font-size: 2rem;
+    }
+    
+    .privacy-content {
+        padding: 1.5rem;
+    }
+    
+    .privacy-section h2 {
+        font-size: 1.25rem;
+    }
+}

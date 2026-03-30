@@ -1,0 +1,546 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Need2Talk\Services;
+
+/**
+ * =============================================================================
+ * FRIENDSHIP KEY SERVICE - E2E Encryption for Direct Messages
+ * =============================================================================
+ *
+ * ENTERPRISE GALAXY+ - Shared Key Management for DM Encryption
+ * Target: 100,000+ concurrent users
+ * Algorithm: AES-256-GCM (FIPS 140-2 compliant)
+ *
+ * ARCHITECTURE:
+ * - Each friendship has a unique shared symmetric key
+ * - The shared key is encrypted with EACH user's master_key
+ * - User A's copy: shared_key encrypted with master_key_A
+ * - User B's copy: shared_key encrypted with master_key_B
+ * - Both can decrypt to get the same shared_key for DM encryption
+ *
+ * FLOW:
+ * 1. When friendship is accepted, frontend generates shared_key
+ * 2. Frontend encrypts shared_key with acceptor's master_key → sends to server
+ * 3. Server stores encrypted copy for acceptor
+ * 4. Requester must fetch and re-encrypt with their own master_key
+ *
+ * SECURITY:
+ * - Server NEVER sees the raw shared_key (zero-knowledge)
+ * - Keys encrypted at rest with user's master_key
+ * - IV unique per encryption (never reused)
+ * - Audit trail for all key operations
+ *
+ * @package Need2Talk\Services
+ * @version 1.0.0
+ * @date 2025-12-07
+ * =============================================================================
+ */
+class FriendshipKeyService
+{
+    private EncryptionService $encryptionService;
+    private \Need2Talk\Core\CacheManager $cache;
+
+    public function __construct()
+    {
+        $this->encryptionService = new EncryptionService();
+        $this->cache = \Need2Talk\Core\EnterpriseCacheFactory::getInstance();
+    }
+
+    /**
+     * Save friendship shared key for a user
+     *
+     * The shared_key is already encrypted client-side with the user's master_key.
+     * We just store it in the database.
+     *
+     * @param int $friendshipId Friendship ID
+     * @param int $userId User ID who owns this encrypted copy
+     * @param string $encryptedSharedKeyBase64 The shared key encrypted with user's master_key (base64)
+     * @param string $ivBase64 The IV used for encryption (base64)
+     * @return bool Success
+     */
+    public function saveSharedKey(
+        int $friendshipId,
+        int $userId,
+        string $encryptedSharedKeyBase64,
+        string $ivBase64
+    ): bool {
+        $db = db();
+
+        try {
+            // Validate inputs
+            if (empty($encryptedSharedKeyBase64) || empty($ivBase64)) {
+                Logger::error('Invalid shared key data', [
+                    'friendship_id' => $friendshipId,
+                    'user_id' => $userId,
+                ]);
+                return false;
+            }
+
+            // Verify user is part of this friendship
+            $friendship = $db->findOne(
+                "SELECT id, user_id, friend_id FROM friendships WHERE id = :id",
+                ['id' => $friendshipId]
+            );
+
+            if (!$friendship) {
+                Logger::security('warning', 'Attempted to save key for non-existent friendship', [
+                    'friendship_id' => $friendshipId,
+                    'user_id' => $userId,
+                ]);
+                return false;
+            }
+
+            if ((int) $friendship['user_id'] !== $userId && (int) $friendship['friend_id'] !== $userId) {
+                Logger::security('warning', 'Attempted to save key for friendship user is not part of', [
+                    'friendship_id' => $friendshipId,
+                    'requesting_user_id' => $userId,
+                    'friendship_user_id' => $friendship['user_id'],
+                    'friendship_friend_id' => $friendship['friend_id'],
+                ]);
+                return false;
+            }
+
+            // Upsert the encrypted key
+            $sql = "INSERT INTO friendship_encryption_keys
+                    (friendship_id, user_id, encrypted_shared_key, iv, key_version, created_at, updated_at)
+                    VALUES (:friendship_id, :user_id, :encrypted_key, :iv, 1, NOW(), NOW())
+                    ON CONFLICT (friendship_id, user_id) DO UPDATE SET
+                        encrypted_shared_key = EXCLUDED.encrypted_shared_key,
+                        iv = EXCLUDED.iv,
+                        key_version = friendship_encryption_keys.key_version + 1,
+                        updated_at = NOW()";
+
+            $db->execute($sql, [
+                'friendship_id' => $friendshipId,
+                'user_id' => $userId,
+                'encrypted_key' => $encryptedSharedKeyBase64,
+                'iv' => $ivBase64,
+            ], [
+                'invalidate_cache' => ["friendship_key:{$friendshipId}:{$userId}"],
+            ]);
+
+            // Clear cache
+            $this->clearKeyCache($friendshipId, $userId);
+
+            Logger::security('info', 'Friendship shared key saved', [
+                'friendship_id' => $friendshipId,
+                'user_id' => $userId,
+            ]);
+
+            return true;
+
+        } catch (\Exception $e) {
+            Logger::error('Failed to save friendship shared key', [
+                'friendship_id' => $friendshipId,
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Load friendship shared key for a user
+     *
+     * Returns the encrypted shared key (encrypted with user's master_key).
+     * Frontend will decrypt with master_key to get the raw shared_key.
+     *
+     * @param int $friendshipId Friendship ID
+     * @param int $userId User ID requesting the key
+     * @return array|null ['encrypted_shared_key' => string, 'iv' => string, 'key_version' => int] or null
+     */
+    public function loadSharedKey(int $friendshipId, int $userId): ?array
+    {
+        $cacheKey = "friendship_key:{$friendshipId}:{$userId}";
+
+        // Try cache first
+        $cached = $this->cache->get($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $db = db();
+
+        try {
+            // ENTERPRISE V10.72: Disable query caching - we have our own Redis cache layer
+            // This prevents stale "not found" results from being cached during key generation
+            $row = $db->findOne(
+                "SELECT encrypted_shared_key, iv, key_version
+                 FROM friendship_encryption_keys
+                 WHERE friendship_id = :friendship_id AND user_id = :user_id",
+                [
+                    'friendship_id' => $friendshipId,
+                    'user_id' => $userId,
+                ],
+                ['cache' => false]
+            );
+
+            if (!$row) {
+                Logger::debug('No shared key found for friendship', [
+                    'friendship_id' => $friendshipId,
+                    'user_id' => $userId,
+                ]);
+                return null;
+            }
+
+            $result = [
+                'encrypted_shared_key' => $row['encrypted_shared_key'],
+                'iv' => $row['iv'],
+                'key_version' => (int) $row['key_version'],
+            ];
+
+            // Cache for 5 minutes
+            $this->cache->set($cacheKey, $result, 300);
+
+            return $result;
+
+        } catch (\Exception $e) {
+            Logger::error('Failed to load friendship shared key', [
+                'friendship_id' => $friendshipId,
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Check if shared key exists for a friendship
+     *
+     * @param int $friendshipId Friendship ID
+     * @param int $userId User ID
+     * @return bool True if key exists for this user
+     */
+    public function hasSharedKey(int $friendshipId, int $userId): bool
+    {
+        $db = db();
+
+        $row = $db->findOne(
+            "SELECT id FROM friendship_encryption_keys
+             WHERE friendship_id = :friendship_id AND user_id = :user_id",
+            [
+                'friendship_id' => $friendshipId,
+                'user_id' => $userId,
+            ],
+            ['cache' => true, 'cache_ttl' => 'short']
+        );
+
+        return $row !== null;
+    }
+
+    /**
+     * Check if BOTH users have shared keys (fully initialized)
+     *
+     * @param int $friendshipId Friendship ID
+     * @return bool True if both users have keys
+     */
+    public function isFullyInitialized(int $friendshipId): bool
+    {
+        $db = db();
+
+        $count = $db->findOne(
+            "SELECT COUNT(*) as cnt FROM friendship_encryption_keys
+             WHERE friendship_id = :friendship_id",
+            ['friendship_id' => $friendshipId],
+            ['cache' => true, 'cache_ttl' => 'short']
+        );
+
+        return $count && (int) $count['cnt'] >= 2;
+    }
+
+    /**
+     * Get friendship ID from two user IDs
+     *
+     * @param int $userIdA First user ID
+     * @param int $userIdB Second user ID
+     * @return int|null Friendship ID or null if not friends
+     */
+    public function getFriendshipId(int $userIdA, int $userIdB): ?int
+    {
+        $db = db();
+
+        $row = $db->findOne(
+            "SELECT id FROM friendships
+             WHERE status = 'accepted'
+             AND ((user_id = :user_a AND friend_id = :user_b)
+                  OR (user_id = :user_b2 AND friend_id = :user_a2))",
+            [
+                'user_a' => $userIdA,
+                'user_b' => $userIdB,
+                'user_a2' => $userIdA,
+                'user_b2' => $userIdB,
+            ],
+            ['cache' => true, 'cache_ttl' => 'medium']
+        );
+
+        return $row ? (int) $row['id'] : null;
+    }
+
+    /**
+     * Get friendship ID from conversation_id (uuid1_uuid2)
+     *
+     * @param string $conversationId Conversation ID - supports both formats:
+     *                               1. UUID from direct_conversations table
+     *                               2. Legacy format: uuid1_uuid2
+     * @return int|null Friendship ID or null
+     */
+    public function getFriendshipIdFromConversation(string $conversationId): ?int
+    {
+        $db = db();
+
+        // ENTERPRISE V10.72: Support both conversation UUID and legacy uuid1_uuid2 format
+        $parts = explode('_', $conversationId);
+
+        if (count($parts) === 2) {
+            // Legacy format: uuid1_uuid2
+            $users = $db->findMany(
+                "SELECT id, uuid FROM users WHERE uuid IN (:uuid1, :uuid2)",
+                ['uuid1' => $parts[0], 'uuid2' => $parts[1]]
+            );
+
+            if (count($users) !== 2) {
+                return null;
+            }
+
+            $userIds = array_column($users, 'id');
+            return $this->getFriendshipId((int) $userIds[0], (int) $userIds[1]);
+        }
+
+        // New format: Single UUID from direct_conversations table
+        $conversation = $db->findOne(
+            "SELECT user1_id, user2_id FROM direct_conversations WHERE uuid = :uuid",
+            ['uuid' => $conversationId]
+        );
+
+        if (!$conversation) {
+            Logger::warning('Conversation not found for E2E key lookup', [
+                'conversation_id' => $conversationId,
+            ]);
+            return null;
+        }
+
+        return $this->getFriendshipId((int) $conversation['user1_id'], (int) $conversation['user2_id']);
+    }
+
+    /**
+     * Get the other user ID in a friendship
+     *
+     * @param int $friendshipId Friendship ID
+     * @param int $currentUserId Current user's ID
+     * @return int|null Other user's ID or null
+     */
+    public function getOtherUserId(int $friendshipId, int $currentUserId): ?int
+    {
+        $db = db();
+
+        $row = $db->findOne(
+            "SELECT user_id, friend_id FROM friendships WHERE id = :id",
+            ['id' => $friendshipId]
+        );
+
+        if (!$row) {
+            return null;
+        }
+
+        if ((int) $row['user_id'] === $currentUserId) {
+            return (int) $row['friend_id'];
+        }
+
+        if ((int) $row['friend_id'] === $currentUserId) {
+            return (int) $row['user_id'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Clear key cache for a friendship/user
+     *
+     * @param int $friendshipId Friendship ID
+     * @param int $userId User ID
+     */
+    public function clearKeyCache(int $friendshipId, int $userId): void
+    {
+        $cacheKey = "friendship_key:{$friendshipId}:{$userId}";
+        $this->cache->delete($cacheKey);
+    }
+
+    /**
+     * Delete shared keys for a friendship (on unfriend)
+     *
+     * @param int $friendshipId Friendship ID
+     * @return bool Success
+     */
+    public function deleteSharedKeys(int $friendshipId): bool
+    {
+        $db = db();
+
+        try {
+            $db->execute(
+                "DELETE FROM friendship_encryption_keys WHERE friendship_id = :friendship_id",
+                ['friendship_id' => $friendshipId]
+            );
+
+            Logger::security('info', 'Friendship shared keys deleted', [
+                'friendship_id' => $friendshipId,
+            ]);
+
+            return true;
+
+        } catch (\Exception $e) {
+            Logger::error('Failed to delete friendship shared keys', [
+                'friendship_id' => $friendshipId,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * ENTERPRISE V10.72: Generate shared key server-side for both users
+     *
+     * This is the HYBRID approach:
+     * - Server generates AES-256 shared key
+     * - Server encrypts with each user's master_key (decrypted from DB)
+     * - Server stores both encrypted copies
+     *
+     * Zero-knowledge compromise: Server sees shared_key momentarily
+     * Acceptable for MVP since server already has access to master_keys
+     *
+     * @param int $friendshipId
+     * @return bool Success
+     */
+    public function generateSharedKeyForBothUsers(int $friendshipId): bool
+    {
+        $db = db();
+
+        try {
+            // Get friendship details
+            $friendship = $db->findOne(
+                "SELECT id, user_id, friend_id FROM friendships WHERE id = :id",
+                ['id' => $friendshipId]
+            );
+
+            if (!$friendship) {
+                Logger::error('Friendship not found for key generation', ['friendship_id' => $friendshipId]);
+                return false;
+            }
+
+            $userA = (int) $friendship['user_id'];
+            $userB = (int) $friendship['friend_id'];
+
+            // Check if keys already exist for BOTH users
+            $existingCountRow = $db->findOne(
+                "SELECT COUNT(*) as cnt FROM friendship_encryption_keys WHERE friendship_id = :friendship_id",
+                ['friendship_id' => $friendshipId]
+            );
+
+            $existingCount = $existingCountRow ? (int) $existingCountRow['cnt'] : 0;
+
+            if ($existingCount >= 2) {
+                Logger::debug('Shared keys already exist for both users', ['friendship_id' => $friendshipId]);
+                return true; // Already initialized
+            }
+
+            // Load master keys for both users
+            $masterKeyA = $this->encryptionService->loadUserMasterKey($userA);
+            $masterKeyB = $this->encryptionService->loadUserMasterKey($userB);
+
+            if (!$masterKeyA || !$masterKeyB) {
+                Logger::warning('Cannot generate shared key - one or both users missing master key', [
+                    'friendship_id' => $friendshipId,
+                    'user_a_has_key' => $masterKeyA !== null,
+                    'user_b_has_key' => $masterKeyB !== null,
+                ]);
+                return false;
+            }
+
+            // Generate shared key (32 bytes = 256 bits)
+            $sharedKeyRaw = random_bytes(32);
+
+            // Encrypt shared key with each user's master key
+            $ivA = random_bytes(12); // 96-bit IV for GCM
+            $ivB = random_bytes(12);
+
+            $encryptedA = $this->encryptWithMasterKey($sharedKeyRaw, base64_decode($masterKeyA), $ivA);
+            $encryptedB = $this->encryptWithMasterKey($sharedKeyRaw, base64_decode($masterKeyB), $ivB);
+
+            if (!$encryptedA || !$encryptedB) {
+                Logger::error('Failed to encrypt shared key', ['friendship_id' => $friendshipId]);
+                return false;
+            }
+
+            // Store encrypted keys for both users
+            $db->beginTransaction(30);
+
+            try {
+                // Save for User A
+                $this->saveSharedKey(
+                    $friendshipId,
+                    $userA,
+                    base64_encode($encryptedA),
+                    base64_encode($ivA)
+                );
+
+                // Save for User B
+                $this->saveSharedKey(
+                    $friendshipId,
+                    $userB,
+                    base64_encode($encryptedB),
+                    base64_encode($ivB)
+                );
+
+                $db->commit();
+
+                Logger::security('info', 'Friendship shared key generated for both users', [
+                    'friendship_id' => $friendshipId,
+                    'user_a' => $userA,
+                    'user_b' => $userB,
+                ]);
+
+                return true;
+
+            } catch (\Exception $e) {
+                $db->rollback();
+                throw $e;
+            }
+
+        } catch (\Exception $e) {
+            Logger::error('Failed to generate shared key', [
+                'friendship_id' => $friendshipId,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Encrypt data with user's master key (AES-256-GCM)
+     *
+     * @param string $data Raw data to encrypt
+     * @param string $masterKey Raw master key (32 bytes)
+     * @param string $iv IV (12 bytes for GCM)
+     * @return string|null Encrypted data + auth tag, or null on error
+     */
+    private function encryptWithMasterKey(string $data, string $masterKey, string $iv): ?string
+    {
+        $tag = '';
+        $ciphertext = openssl_encrypt(
+            $data,
+            'aes-256-gcm',
+            $masterKey,
+            OPENSSL_RAW_DATA,
+            $iv,
+            $tag
+        );
+
+        if ($ciphertext === false) {
+            return null;
+        }
+
+        // Append auth tag (16 bytes)
+        return $ciphertext . $tag;
+    }
+}

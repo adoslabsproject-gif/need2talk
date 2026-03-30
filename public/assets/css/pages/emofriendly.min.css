@@ -1,0 +1,461 @@
+/**
+ * EMOFRIENDLY PAGE STYLES - ENTERPRISE GALAXY
+ *
+ * Pagina suggerimenti amicizie basati su compatibilità emotiva.
+ *
+ * CSS RULES:
+ * - TUTTI i selettori con prefisso .emofriendly
+ * - BEM naming convention (Block__Element--Modifier)
+ * - Nessun override di classi esistenti
+ * - Nessun tag selector (input, button, etc.)
+ *
+ * @version 1.0.0
+ */
+
+/* ============================================
+   CONTAINER & LAYOUT
+   ============================================ */
+.emofriendly {
+    /* Base container - Tailwind handles most */
+}
+
+.emofriendly__container {
+    /* Container padding handled by Tailwind */
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+.emofriendly__header {
+    text-align: left;
+}
+
+.emofriendly__title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.emofriendly__title-emoji {
+    font-size: 2.25rem;
+}
+
+.emofriendly__subtitle {
+    margin-left: 3.5rem;
+}
+
+/* ============================================
+   SECTIONS
+   ============================================ */
+.emofriendly__section {
+    /* Section wrapper */
+}
+
+.emofriendly__section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.emofriendly__section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.emofriendly__section-emoji {
+    font-size: 1.5rem;
+}
+
+.emofriendly__section-subtitle {
+    margin-left: 2.25rem;
+}
+
+/* ============================================
+   CAROUSEL
+   ============================================ */
+.emofriendly__carousel {
+    display: flex;
+    overflow-x: auto;
+    gap: 1rem;
+    padding: 1rem 0.25rem;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(168, 85, 247, 0.5) rgba(255, 255, 255, 0.05);
+}
+
+.emofriendly__carousel::-webkit-scrollbar {
+    height: 8px;
+}
+
+.emofriendly__carousel::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+.emofriendly__carousel::-webkit-scrollbar-thumb {
+    background: rgba(168, 85, 247, 0.5);
+    border-radius: 4px;
+}
+
+.emofriendly__carousel::-webkit-scrollbar-thumb:hover {
+    background: rgba(168, 85, 247, 0.7);
+}
+
+/* ============================================
+   USER CARD
+   ============================================ */
+.emofriendly__card {
+    flex: 0 0 260px;
+    scroll-snap-align: start;
+    background: rgba(31, 41, 55, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(107, 114, 128, 0.3);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.emofriendly__card:hover {
+    border-color: rgba(168, 85, 247, 0.4);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(168, 85, 247, 0.15);
+}
+
+.emofriendly__card--removing {
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.3s ease-out;
+}
+
+/* Card Header */
+.emofriendly__card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    margin-bottom: 0.875rem;
+}
+
+.emofriendly__card-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(168, 85, 247, 0.5);
+    flex-shrink: 0;
+}
+
+.emofriendly__card-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.emofriendly__card-avatar-link {
+    flex-shrink: 0;
+}
+
+.emofriendly__card-nickname-link {
+    text-decoration: none;
+    display: block;
+    min-width: 0;
+}
+
+.emofriendly__card-nickname-link:hover .emofriendly__card-nickname {
+    color: rgba(168, 85, 247, 1);
+}
+
+.emofriendly__card-nickname {
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.2s ease;
+}
+
+.emofriendly__card-score {
+    font-size: 0.75rem;
+    color: rgba(168, 85, 247, 0.9);
+    margin-top: 0.125rem;
+}
+
+/* Card Emotions */
+.emofriendly__card-emotions {
+    display: flex;
+    gap: 0.375rem;
+    margin-bottom: 0.875rem;
+    flex-wrap: wrap;
+}
+
+.emofriendly__card-emotion {
+    padding: 0.125rem 0.5rem;
+    background: rgba(168, 85, 247, 0.15);
+    border-radius: 9999px;
+    font-size: 1rem;
+}
+
+/* ============================================
+   ACTION BUTTONS
+   ============================================ */
+.emofriendly__card-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.emofriendly__btn {
+    flex: 1;
+    padding: 0.5rem 0.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.emofriendly__btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.emofriendly__btn--primary {
+    background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
+    color: white;
+    flex: 2;
+}
+
+.emofriendly__btn--primary:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: scale(1.02);
+}
+
+.emofriendly__btn--secondary {
+    background: rgba(107, 114, 128, 0.3);
+    color: #9CA3AF;
+}
+
+.emofriendly__btn--secondary:hover:not(:disabled) {
+    background: rgba(107, 114, 128, 0.5);
+    color: white;
+}
+
+.emofriendly__btn--danger {
+    background: rgba(239, 68, 68, 0.2);
+    color: #F87171;
+}
+
+.emofriendly__btn--danger:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.4);
+}
+
+.emofriendly__btn-icon {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+}
+
+/* ============================================
+   LOADING STATE
+   ============================================ */
+.emofriendly__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 180px;
+}
+
+.emofriendly__loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(168, 85, 247, 0.2);
+    border-top-color: #8B5CF6;
+    border-radius: 50%;
+    animation: emofriendly-spin 1s linear infinite;
+}
+
+.emofriendly__loading-text {
+    font-size: 0.875rem;
+}
+
+@keyframes emofriendly-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+.emofriendly__empty {
+    width: 100%;
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #9CA3AF;
+}
+
+.emofriendly__empty-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.emofriendly__empty-text {
+    font-size: 0.9375rem;
+}
+
+.emofriendly__empty-subtext {
+    font-size: 0.8125rem;
+    margin-top: 0.5rem;
+    color: #6B7280;
+}
+
+/* ============================================
+   INFO BOX
+   ============================================ */
+.emofriendly__info {
+    /* Styled with Tailwind in HTML */
+}
+
+.emofriendly__info-title {
+    display: flex;
+    align-items: center;
+}
+
+.emofriendly__info-text {
+    /* Styled with Tailwind */
+}
+
+/* ============================================
+   TOAST NOTIFICATIONS
+   ============================================ */
+.emofriendly__toast {
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transform: translateX(100%);
+    opacity: 0;
+    transition: all 0.3s ease-out;
+}
+
+.emofriendly__toast--visible {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.emofriendly__toast--success {
+    background: rgba(34, 197, 94, 0.9);
+    color: white;
+}
+
+.emofriendly__toast--error {
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+}
+
+.emofriendly__toast--info {
+    background: rgba(168, 85, 247, 0.9);
+    color: white;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+    .emofriendly__card {
+        flex: 0 0 240px;
+    }
+
+    .emofriendly__title {
+        font-size: 1.75rem;
+    }
+
+    .emofriendly__title-emoji {
+        font-size: 1.75rem;
+    }
+
+    .emofriendly__subtitle {
+        margin-left: 2.75rem;
+        font-size: 0.875rem;
+    }
+
+    .emofriendly__section-subtitle {
+        margin-left: 2rem;
+    }
+
+    .emofriendly__header {
+        padding-top: 1rem;
+    }
+
+    .emofriendly__card-avatar {
+        width: 48px;
+        height: 48px;
+    }
+
+    .emofriendly__card-nickname {
+        font-size: 0.9375rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .emofriendly__card {
+        flex: 0 0 220px;
+        padding: 1rem;
+    }
+
+    .emofriendly__btn {
+        padding: 0.4375rem 0.375rem;
+        font-size: 0.75rem;
+    }
+
+    .emofriendly__btn-icon {
+        width: 0.875rem;
+        height: 0.875rem;
+    }
+}
+
+/* ============================================
+   DARK MODE (default - already dark)
+   ============================================ */
+@media (prefers-color-scheme: light) {
+    /* Keep dark theme regardless of system preference */
+    .emofriendly {
+        /* Force dark */
+    }
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+    .emofriendly__card {
+        transition: none;
+    }
+
+    .emofriendly__card:hover {
+        transform: none;
+    }
+
+    .emofriendly__loading-spinner {
+        animation: none;
+    }
+
+    .emofriendly__toast {
+        transition: none;
+    }
+
+    .emofriendly__card--removing {
+        transition: none;
+    }
+}

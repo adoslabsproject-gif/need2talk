@@ -1,0 +1,1042 @@
+/**
+ * Diary Audio Recorder Modal - ENTERPRISE V12 CSS
+ *
+ * Target: #journalAudioRecorderModal
+ * Design: Premium Glassmorphism + Purple Theme
+ * BEM Classes: .diary-audio-recorder__*
+ *
+ * @package need2talk/Lightning
+ * @version 12.0.4
+ */
+
+/* ============================================================================
+   MODAL Z-INDEX (moved from inline style)
+   ============================================================================ */
+
+#journalAudioRecorderModal {
+    z-index: 99999;
+}
+
+#journalAudioRecorderModal + .modal-backdrop,
+.modal-backdrop.show {
+    z-index: 99998;
+}
+
+/* ============================================================================
+   MODAL CONTENT - Premium Glassmorphism
+   ============================================================================ */
+
+#journalAudioRecorderModal .modal-content,
+#journalAudioRecorderModal .diary-audio-recorder {
+    background: linear-gradient(165deg,
+        rgba(17, 24, 39, 0.98) 0%,
+        rgba(31, 41, 55, 0.95) 50%,
+        rgba(17, 24, 39, 0.98) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 1.5rem;
+    box-shadow:
+        0 25px 80px rgba(0, 0, 0, 0.6),
+        0 0 60px rgba(139, 92, 246, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+    position: relative;
+}
+
+/* Animated gradient border top */
+#journalAudioRecorderModal .modal-content::before,
+#journalAudioRecorderModal .diary-audio-recorder::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg,
+        #7c3aed, #a855f7, #ec4899, #a855f7, #7c3aed);
+    background-size: 200% 100%;
+    animation: modal-gradient-flow 4s ease infinite;
+}
+
+@keyframes modal-gradient-flow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* Corner decoration */
+#journalAudioRecorderModal .modal-content::after,
+#journalAudioRecorderModal .diary-audio-recorder::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle at bottom right,
+        rgba(139, 92, 246, 0.1) 0%,
+        transparent 70%);
+    pointer-events: none;
+}
+
+/* ============================================================================
+   HEADER - Glass Effect (BEM: diary-audio-recorder__header)
+   ============================================================================ */
+
+#journalAudioRecorderModal .modal-header,
+#journalAudioRecorderModal .diary-audio-recorder__header {
+    background: linear-gradient(180deg,
+        rgba(139, 92, 246, 0.12) 0%,
+        rgba(17, 24, 39, 0.9) 100%);
+    border-bottom: 1px solid rgba(139, 92, 246, 0.25);
+    padding: 1.25rem 1.75rem;
+    position: relative;
+}
+
+#journalAudioRecorderModal .modal-title,
+#journalAudioRecorderModal .diary-audio-recorder__title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #c4b5fd 0%, #a855f7 50%, #ec4899 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+#journalAudioRecorderModal .modal-title svg,
+#journalAudioRecorderModal .diary-audio-recorder__icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: #a855f7;
+    -webkit-text-fill-color: initial;
+    filter: drop-shadow(0 2px 4px rgba(168, 85, 247, 0.4));
+}
+
+/* Close button (BEM: diary-audio-recorder__close-btn) */
+#journalAudioRecorderModal .diary-audio-recorder__close-btn,
+#journalAudioRecorderModal [data-bs-dismiss="modal"] {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 0.75rem;
+    color: #f87171;
+    font-size: 1.25rem;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#journalAudioRecorderModal .diary-audio-recorder__close-btn:hover,
+#journalAudioRecorderModal [data-bs-dismiss="modal"]:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+    transform: rotate(90deg) scale(1.1);
+}
+
+/* ============================================================================
+   BODY - Content Area (BEM: diary-audio-recorder__body)
+   ============================================================================ */
+
+#journalAudioRecorderModal .modal-body,
+#journalAudioRecorderModal .diary-audio-recorder__body {
+    background: transparent;
+    padding: 2rem;
+    color: #ffffff;
+}
+
+/* ============================================================================
+   EMOTION SELECTION - Premium Grid
+   ============================================================================ */
+
+#journalAudioRecorderModal .emotion-category-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    display: inline-block;
+}
+
+#journalAudioRecorderModal .emotion-category-positive {
+    color: #34d399;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(52, 211, 153, 0.1));
+    border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+#journalAudioRecorderModal .emotion-category-negative {
+    color: #94a3b8;
+    background: linear-gradient(135deg, rgba(100, 116, 139, 0.15), rgba(148, 163, 184, 0.1));
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+#journalAudioRecorderModal .emotion-grid-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+/* Emotion buttons - uses .emotion-btn-modal class from JS */
+#journalAudioRecorderModal .emotion-btn-modal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 0.5rem;
+    background: rgba(31, 41, 55, 0.6);
+    border: 2px solid rgba(75, 85, 99, 0.5);
+    border-radius: 1rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    min-height: 80px;
+}
+
+#journalAudioRecorderModal .emotion-btn-modal::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center,
+        rgba(139, 92, 246, 0.2) 0%,
+        transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#journalAudioRecorderModal .emotion-btn-modal:hover {
+    border-color: rgba(139, 92, 246, 0.7);
+    background: rgba(139, 92, 246, 0.15);
+    transform: translateY(-4px) scale(1.02);
+    box-shadow:
+        0 8px 25px rgba(139, 92, 246, 0.25),
+        0 0 0 1px rgba(139, 92, 246, 0.2);
+}
+
+#journalAudioRecorderModal .emotion-btn-modal:hover::before {
+    opacity: 1;
+}
+
+/* Active state - JS uses .active class */
+#journalAudioRecorderModal .emotion-btn-modal.active {
+    border-color: #a855f7;
+    background: linear-gradient(135deg,
+        rgba(139, 92, 246, 0.3) 0%,
+        rgba(168, 85, 247, 0.2) 100%);
+    box-shadow:
+        0 0 0 3px rgba(168, 85, 247, 0.4),
+        0 8px 30px rgba(139, 92, 246, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
+}
+
+#journalAudioRecorderModal .emotion-icon-modal {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    transition: transform 0.3s ease;
+}
+
+#journalAudioRecorderModal .emotion-btn-modal:hover .emotion-icon-modal {
+    transform: scale(1.2);
+}
+
+#journalAudioRecorderModal .emotion-btn-modal.active .emotion-icon-modal {
+    transform: scale(1.15);
+    filter: drop-shadow(0 4px 8px rgba(168, 85, 247, 0.5));
+}
+
+#journalAudioRecorderModal .emotion-name-modal {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #d1d5db;
+    text-align: center;
+}
+
+#journalAudioRecorderModal .emotion-btn-modal.active .emotion-name-modal {
+    color: #c4b5fd;
+    font-weight: 700;
+}
+
+/* ============================================================================
+   INTENSITY SLIDER - Premium Design
+   ============================================================================ */
+
+#journalAudioRecorderModal #intensitySliderContainer {
+    background: rgba(31, 41, 55, 0.5);
+    border: 1px solid rgba(75, 85, 99, 0.3);
+    border-radius: 1rem;
+    padding: 1.25rem;
+}
+
+#journalAudioRecorderModal .intensity-slider-modal {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(90deg,
+        #3b82f6 0%,
+        #8b5cf6 50%,
+        #ec4899 100%);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+}
+
+#journalAudioRecorderModal .intensity-slider-modal::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, #ffffff, #e5e7eb);
+    border: 3px solid #a855f7;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.3),
+        0 0 0 4px rgba(168, 85, 247, 0.2);
+    transition: all 0.2s ease;
+}
+
+#journalAudioRecorderModal .intensity-slider-modal::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow:
+        0 6px 16px rgba(0, 0, 0, 0.4),
+        0 0 0 6px rgba(168, 85, 247, 0.3);
+}
+
+#journalAudioRecorderModal #intensityValue {
+    font-size: 1.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #a855f7, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ============================================================================
+   REC BUTTON - Premium Pulsing Design
+   ============================================================================ */
+
+#journalAudioRecorderModal .rec-button {
+    position: relative;
+    width: 6rem;
+    height: 6rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+#journalAudioRecorderModal .rec-button-inner {
+    position: absolute;
+    inset: 8px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #ef4444, #dc2626, #b91c1c);
+    box-shadow:
+        0 8px 32px rgba(239, 68, 68, 0.5),
+        inset 0 2px 4px rgba(255, 255, 255, 0.2),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+#journalAudioRecorderModal .rec-button::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        rgba(239, 68, 68, 0.4) 0%,
+        transparent 70%);
+    animation: rec-pulse 2s ease-in-out infinite;
+}
+
+@keyframes rec-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.3); opacity: 0; }
+}
+
+#journalAudioRecorderModal .rec-button::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 2px dashed rgba(239, 68, 68, 0.4);
+    animation: rec-rotate 10s linear infinite;
+}
+
+@keyframes rec-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+#journalAudioRecorderModal .rec-button:hover .rec-button-inner {
+    box-shadow:
+        0 12px 40px rgba(239, 68, 68, 0.6),
+        inset 0 2px 4px rgba(255, 255, 255, 0.3),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+    transform: scale(1.05);
+}
+
+#journalAudioRecorderModal .rec-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+#journalAudioRecorderModal .rec-button:disabled::before,
+#journalAudioRecorderModal .rec-button:disabled::after {
+    animation: none;
+}
+
+#journalAudioRecorderModal .rec-button-label {
+    position: absolute;
+    bottom: -0.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #ef4444;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================================================
+   STOP BUTTON - Square Design
+   ============================================================================ */
+
+#journalAudioRecorderModal .stop-button {
+    position: relative;
+    width: 6rem;
+    height: 6rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+#journalAudioRecorderModal .stop-button-inner {
+    position: absolute;
+    inset: 16px;
+    border-radius: 8px;
+    background: linear-gradient(145deg, #6b7280, #4b5563, #374151);
+    box-shadow:
+        0 8px 32px rgba(107, 114, 128, 0.4),
+        inset 0 2px 4px rgba(255, 255, 255, 0.1),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+#journalAudioRecorderModal .stop-button::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    border: 2px solid rgba(107, 114, 128, 0.3);
+    animation: stop-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes stop-pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+}
+
+#journalAudioRecorderModal .stop-button:hover .stop-button-inner {
+    background: linear-gradient(145deg, #ef4444, #dc2626, #b91c1c);
+    box-shadow:
+        0 12px 40px rgba(239, 68, 68, 0.5),
+        inset 0 2px 4px rgba(255, 255, 255, 0.2);
+}
+
+#journalAudioRecorderModal .stop-button-label {
+    position: absolute;
+    bottom: -0.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+}
+
+/* ============================================================================
+   RECORDING TIMER - Glowing
+   ============================================================================ */
+
+#journalAudioRecorderModal #recordingTimer {
+    font-size: 3rem;
+    font-weight: 800;
+    font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+    background: linear-gradient(135deg, #ef4444, #f87171);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 40px rgba(239, 68, 68, 0.5);
+    animation: timer-glow 1s ease-in-out infinite alternate;
+    display: block;
+    text-align: center;
+    width: 100%;
+    margin: 0 auto 1rem auto;
+}
+
+@keyframes timer-glow {
+    from { filter: brightness(1); }
+    to { filter: brightness(1.2); }
+}
+
+/* ============================================================================
+   WAVEFORM CONTAINER
+   ============================================================================ */
+
+#journalAudioRecorderModal #waveformContainer {
+    background: linear-gradient(180deg,
+        rgba(17, 24, 39, 0.8) 0%,
+        rgba(31, 41, 55, 0.6) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ============================================================================
+   PLAYBACK CONTROLS - Premium Player
+   ============================================================================ */
+
+#journalAudioRecorderModal #playbackControls {
+    background: rgba(31, 41, 55, 0.5);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 1.25rem;
+    padding: 1.5rem;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+/* Center the "Anteprima registrazione" label */
+#journalAudioRecorderModal #playbackControls .form-label {
+    display: block;
+    text-align: center;
+}
+
+#journalAudioRecorderModal .journal-audio-player {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+#journalAudioRecorderModal .player-play-btn {
+    width: 4rem;
+    height: 4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow:
+        0 8px 24px rgba(139, 92, 246, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+#journalAudioRecorderModal .player-play-btn:hover {
+    transform: scale(1.1);
+    box-shadow:
+        0 12px 32px rgba(139, 92, 246, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+#journalAudioRecorderModal .player-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+}
+
+#journalAudioRecorderModal .player-progress-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+#journalAudioRecorderModal .player-progress-container {
+    position: relative;
+    height: 12px;
+    background: rgba(75, 85, 99, 0.4);
+    border-radius: 6px;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+#journalAudioRecorderModal .player-progress-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    background: linear-gradient(90deg, #7c3aed, #a855f7, #c084fc);
+    border-radius: 6px;
+    transition: width 0.1s linear;
+}
+
+#journalAudioRecorderModal .player-progress-handle {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    background: white;
+    border: 3px solid #a855f7;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    cursor: grab;
+}
+
+#journalAudioRecorderModal .player-time {
+    display: flex;
+    justify-content: flex-end;
+}
+
+#journalAudioRecorderModal .player-time-elapsed {
+    font-family: 'SF Mono', monospace;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #a855f7;
+}
+
+#journalAudioRecorderModal .audio-duration-display {
+    padding: 0.375rem 0.875rem;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 9999px;
+    font-family: 'SF Mono', monospace;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #c4b5fd;
+}
+
+/* ============================================================================
+   ACTION BUTTONS - Premium Design
+   ============================================================================ */
+
+#journalAudioRecorderModal .action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.875rem 1.5rem;
+    border-radius: 0.875rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+}
+
+#journalAudioRecorderModal .action-btn-warning {
+    background: linear-gradient(135deg,
+        rgba(245, 158, 11, 0.15),
+        rgba(251, 191, 36, 0.1));
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+}
+
+#journalAudioRecorderModal .action-btn-warning:hover {
+    background: linear-gradient(135deg,
+        rgba(245, 158, 11, 0.25),
+        rgba(251, 191, 36, 0.2));
+    border-color: rgba(245, 158, 11, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.2);
+}
+
+#journalAudioRecorderModal .action-btn-success {
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: white;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+}
+
+#journalAudioRecorderModal .action-btn-success:hover {
+    background: linear-gradient(135deg, #047857, #059669);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+}
+
+#journalAudioRecorderModal .action-btn-success:disabled {
+    background: rgba(75, 85, 99, 0.4);
+    color: #6b7280;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+#journalAudioRecorderModal .action-btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ============================================================================
+   TEXT NOTES - Premium Textarea
+   ============================================================================ */
+
+#journalAudioRecorderModal #textNotes {
+    background: rgba(17, 24, 39, 0.6);
+    border: 2px solid rgba(75, 85, 99, 0.4);
+    border-radius: 1rem;
+    padding: 1rem;
+    color: #e5e7eb;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    transition: all 0.3s ease;
+    resize: vertical;
+}
+
+#journalAudioRecorderModal #textNotes:focus {
+    outline: none;
+    border-color: rgba(139, 92, 246, 0.6);
+    box-shadow:
+        0 0 0 4px rgba(139, 92, 246, 0.1),
+        0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+#journalAudioRecorderModal #textNotes::placeholder {
+    color: #6b7280;
+}
+
+/* ============================================================================
+   PHOTO UPLOAD - Premium Design
+   ============================================================================ */
+
+#journalAudioRecorderModal #audioPhoto {
+    background: rgba(17, 24, 39, 0.6);
+    border: 2px dashed rgba(75, 85, 99, 0.4);
+    border-radius: 1rem;
+    padding: 1rem;
+    color: #9ca3af;
+    transition: all 0.3s ease;
+}
+
+#journalAudioRecorderModal #audioPhoto:hover {
+    border-color: rgba(139, 92, 246, 0.5);
+    background: rgba(139, 92, 246, 0.05);
+}
+
+/* File Selector Button - Cross-browser styling */
+#journalAudioRecorderModal #audioPhoto::file-selector-button {
+    background: linear-gradient(135deg,
+        rgba(139, 92, 246, 0.2) 0%,
+        rgba(168, 85, 247, 0.15) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    border-radius: 0.75rem;
+    padding: 0.5rem 1rem;
+    color: #c4b5fd;
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    margin-right: 1rem;
+    transition: all 0.3s ease;
+}
+
+#journalAudioRecorderModal #audioPhoto::file-selector-button:hover {
+    background: linear-gradient(135deg,
+        rgba(139, 92, 246, 0.35) 0%,
+        rgba(168, 85, 247, 0.25) 100%);
+    border-color: rgba(139, 92, 246, 0.6);
+    color: #ddd6fe;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+
+/* WebKit fallback (older Safari/Chrome) */
+#journalAudioRecorderModal #audioPhoto::-webkit-file-upload-button {
+    background: linear-gradient(135deg,
+        rgba(139, 92, 246, 0.2) 0%,
+        rgba(168, 85, 247, 0.15) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    border-radius: 0.75rem;
+    padding: 0.5rem 1rem;
+    color: #c4b5fd;
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    margin-right: 1rem;
+    transition: all 0.3s ease;
+}
+
+#journalAudioRecorderModal #audioPhoto::-webkit-file-upload-button:hover {
+    background: linear-gradient(135deg,
+        rgba(139, 92, 246, 0.35) 0%,
+        rgba(168, 85, 247, 0.25) 100%);
+    border-color: rgba(139, 92, 246, 0.6);
+    color: #ddd6fe;
+}
+
+#journalAudioRecorderModal #photoPreview img {
+    border: 2px solid rgba(139, 92, 246, 0.3);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Remove Photo Button - Premium Dark Theme */
+#journalAudioRecorderModal #removePhotoBtn {
+    background: linear-gradient(135deg,
+        rgba(239, 68, 68, 0.15) 0%,
+        rgba(220, 38, 38, 0.1) 100%);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 0.75rem;
+    padding: 0.5rem 1rem;
+    color: #fca5a5;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+}
+
+#journalAudioRecorderModal #removePhotoBtn:hover {
+    background: linear-gradient(135deg,
+        rgba(239, 68, 68, 0.3) 0%,
+        rgba(220, 38, 38, 0.2) 100%);
+    border-color: rgba(239, 68, 68, 0.6);
+    color: #fecaca;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+#journalAudioRecorderModal #removePhotoBtn svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* ============================================================================
+   SECURITY NOTICE - Premium Alert
+   ============================================================================ */
+
+#journalAudioRecorderModal .alert-info {
+    background: linear-gradient(135deg,
+        rgba(6, 182, 212, 0.1) 0%,
+        rgba(139, 92, 246, 0.08) 100%);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    border-radius: 1rem;
+    padding: 1rem 1.25rem;
+    color: #67e8f9;
+    position: relative;
+    overflow: hidden;
+}
+
+#journalAudioRecorderModal .alert-info::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #06b6d4, #a855f7);
+    border-radius: 1rem 0 0 1rem;
+}
+
+#journalAudioRecorderModal .alert-info strong {
+    color: #22d3ee;
+}
+
+/* ============================================================================
+   UPLOAD PROGRESS - Animated Bar
+   ============================================================================ */
+
+#journalAudioRecorderModal .progress {
+    background: rgba(31, 41, 55, 0.6);
+    border-radius: 1rem;
+    overflow: hidden;
+    border: 1px solid rgba(75, 85, 99, 0.3);
+}
+
+#journalAudioRecorderModal .progress-bar {
+    background: linear-gradient(90deg,
+        #059669, #10b981, #34d399, #10b981, #059669);
+    background-size: 200% 100%;
+    animation: progress-shimmer 2s linear infinite;
+}
+
+@keyframes progress-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ============================================================================
+   FORM LABELS - Premium Typography
+   ============================================================================ */
+
+#journalAudioRecorderModal .form-label {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #e5e7eb;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#journalAudioRecorderModal .form-label svg {
+    color: #a855f7;
+}
+
+/* ============================================================================
+   V12: PHOTO UPLOAD SECTION (BEM Styled)
+   Scoped to modal for proper specificity over Bootstrap
+   ============================================================================ */
+
+#journalAudioRecorderModal .journal-recorder__photo-section {
+    margin-bottom: 1rem;
+}
+
+#journalAudioRecorderModal .journal-recorder__photo-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #e5e7eb;
+    margin-bottom: 0.625rem;
+}
+
+#journalAudioRecorderModal .journal-recorder__photo-label-icon {
+    width: 1.125rem;
+    height: 1.125rem;
+    color: #a855f7;
+}
+
+#journalAudioRecorderModal .journal-recorder__photo-optional {
+    font-weight: 400;
+    color: #6b7280;
+}
+
+#journalAudioRecorderModal .journal-recorder__photo-upload {
+    position: relative;
+    display: inline-block;
+}
+
+#journalAudioRecorderModal .journal-recorder__photo-input {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+    top: 0;
+    left: 0;
+}
+
+#journalAudioRecorderModal .journal-recorder__photo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #c4b5fd;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#journalAudioRecorderModal .journal-recorder__photo-upload:hover .journal-recorder__photo-btn {
+    background: rgba(139, 92, 246, 0.25);
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+#journalAudioRecorderModal .journal-recorder__photo-btn-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+#journalAudioRecorderModal .journal-recorder__photo-hint {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin: 0.5rem 0 0 0;
+}
+
+#journalAudioRecorderModal .journal-recorder__photo-preview {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(17, 24, 39, 0.5);
+    border: 1px solid rgba(75, 85, 99, 0.3);
+    border-radius: 0.75rem;
+}
+
+#journalAudioRecorderModal .journal-recorder__photo-img {
+    max-width: 120px;
+    max-height: 120px;
+    object-fit: cover;
+    border-radius: 0.5rem;
+    border: 2px solid rgba(139, 92, 246, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+#journalAudioRecorderModal .journal-recorder__photo-remove {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #fca5a5;
+    background: rgba(127, 29, 29, 0.3);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#journalAudioRecorderModal .journal-recorder__photo-remove:hover {
+    background: rgba(127, 29, 29, 0.5);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+#journalAudioRecorderModal .journal-recorder__photo-remove svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    #journalAudioRecorderModal .modal-content,
+    #journalAudioRecorderModal .diary-audio-recorder {
+        border-radius: 1rem 1rem 0 0;
+        margin: 0;
+    }
+
+    #journalAudioRecorderModal .emotion-grid-row {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    #journalAudioRecorderModal .rec-button,
+    #journalAudioRecorderModal .stop-button {
+        width: 5rem;
+        height: 5rem;
+    }
+
+    #journalAudioRecorderModal .action-btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
+}
+
+@media (max-width: 480px) {
+    #journalAudioRecorderModal .emotion-grid-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

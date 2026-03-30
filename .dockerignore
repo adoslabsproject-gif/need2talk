@@ -1,0 +1,73 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Composer vendor
+vendor
+
+# Logs
+*.log
+storage/logs/*.log
+storage/logs/*.txt
+
+# Cache
+storage/cache/*
+storage/debugbar/*
+storage/sessions_sync_queue.json
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# MAMP/Apache config (non più necessari)
+.htaccess
+.user.ini
+backup-mamp-config.sh
+restore-mamp-config.sh
+mamp-config-backup
+
+# Documentation
+*.md
+*.rtf
+docs
+
+# Test files
+tests
+testing
+
+# Backup files
+*.sql
+backup_*.sql
+
+# SSL (MAMP)
+ssl
+
+# Redis data
+dump.rdb
+appendonlydir
+
+# Development
+dev-*.php
+test-*.php
+test_*.php
+profile-*.php
+analyze-*.php
+verify-*.php
+emergency-*.php
+diagnostic.php
+simple-*.php

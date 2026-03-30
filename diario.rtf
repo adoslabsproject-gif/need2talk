@@ -1,0 +1,653 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2867
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 Menlo-Regular;\f1\fnil\fcharset0 Menlo-Bold;\f2\fnil\fcharset0 Menlo-Italic;
+}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red57\green192\blue38;\red86\green32\blue244;
+\red162\green168\blue247;\red202\green51\blue35;\red170\green171\blue37;\red66\green176\blue82;\red135\green135\blue135;
+\red255\green255\blue255;\red56\green185\blue199;}
+{\*\expandedcolortbl;;\csgray\c0;\cssrgb\c25706\c77963\c19557;\cssrgb\c41681\c25958\c96648;
+\cssrgb\c69412\c72549\c97647;\cssrgb\c83899\c28663\c18026;\cssrgb\c72331\c71682\c18599;\cssrgb\c30588\c72941\c39608;\cssrgb\c60000\c60000\c60000;
+\cssrgb\c100000\c100000\c100000;\cssrgb\c25546\c77007\c82023;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f0\fs22 \cf2 \CocoaLigature0   ---\
+  
+\f1\b \uc0\u55357 \u56592  PIANO DI IMPLEMENTAZIONE: DIARIO PERSONALE E2E 100%
+\f0\b0 \
+\
+  
+\f1\b RIEPILOGO DECISIONI
+\f0\b0 \
+\
+  | Scelta          | Valore                           |\
+  |-----------------|----------------------------------|\
+  | 
+\f1\b Share Entry
+\f0\b0      | \uc0\u10060  ELIMINATO (vera E2E)           |\
+  | 
+\f1\b KDF Algorithm
+\f0\b0    | PBKDF2-SHA256 (600k+ iterations) |\
+  | 
+\f1\b Remember Device
+\f0\b0  | 30 giorni                        |\
+  | 
+\f1\b Zero Knowledge
+\f0\b0   | TOTALE (no recovery)             |\
+\
+  ---\
+  
+\f1\b FASE 1: CLEANUP DATABASE & BACKEND (Pre-requisiti)
+\f0\b0 \
+\
+  
+\f1\b 1.1 Migration SQL per pulizia schema
+\f0\b0 \
+\
+  \cf3 -- Elimina indici obsoleti\cf2 \
+  \cf4 DROP\cf2  INDEX IF \cf4 EXISTS\cf2  idx_shared_journal;\
+  \cf4 DROP\cf2  INDEX IF \cf4 EXISTS\cf2  idx_shared_post_journal;\
+  \cf4 DROP\cf2  INDEX IF \cf4 EXISTS\cf2  idx_user_shared_journal;\
+  \cf4 DROP\cf2  INDEX IF \cf4 EXISTS\cf2  idx_journal_audio_shared;\
+  \cf4 DROP\cf2  INDEX IF \cf4 EXISTS\cf2  idx_journal_audio_shared_as_post_id;\
+  \cf4 DROP\cf2  INDEX IF \cf4 EXISTS\cf2  idx_uek_diary_setup_at;\
+  \cf4 DROP\cf2  INDEX IF \cf4 EXISTS\cf2  idx_uek_has_diary_password;\
+  \cf4 DROP\cf2  INDEX IF \cf4 EXISTS\cf2  idx_uek_remembered_devices;\
+\
+  \cf3 -- Elimina colonne Share (rompono E2E)\cf2 \
+  \cf4 ALTER\cf2  \cf4 TABLE\cf2  emotional_journal_entries \cf4 DROP\cf2  \cf4 COLUMN\cf2  IF \cf4 EXISTS\cf2  is_shared;\
+  \cf4 ALTER\cf2  \cf4 TABLE\cf2  emotional_journal_entries \cf4 DROP\cf2  \cf4 COLUMN\cf2  IF \cf4 EXISTS\cf2  shared_as_post_id;\
+  \cf4 ALTER\cf2  \cf4 TABLE\cf2  journal_audio_files \cf4 DROP\cf2  \cf4 COLUMN\cf2  IF \cf4 EXISTS\cf2  is_shared;\
+  \cf4 ALTER\cf2  \cf4 TABLE\cf2  journal_audio_files \cf4 DROP\cf2  \cf4 COLUMN\cf2  IF \cf4 EXISTS\cf2  shared_as_post_id;\
+\
+  \cf3 -- RIUSA colonne esistenti in user_encryption_keys (gi\'e0 create)\cf2 \
+  \cf3 -- diary_password_hash \uc0\u8594  hash Argon2id della password diario\cf2 \
+  \cf3 -- diary_kdf_salt \uc0\u8594  salt per PBKDF2\cf2 \
+  \cf3 -- has_diary_password \uc0\u8594  flag setup completato\cf2 \
+  \cf3 -- diary_setup_at \uc0\u8594  timestamp setup\cf2 \
+  \cf3 -- remembered_devices \uc0\u8594  JSONB con device tokens\cf2 \
+\
+  
+\f1\b 1.2 Nuova struttura user_encryption_keys
+\f0\b0 \
+\
+  | Colonna             | Tipo      | Uso                                         |\
+  |---------------------|-----------|---------------------------------------------|\
+  | \cf5 diary_password_hash\cf2  | VARCHAR   | Argon2id hash per verifica password         |\
+  | \cf5 diary_kdf_salt\cf2       | BYTEA     | Salt 32 bytes per PBKDF2 (derivazione DEK)  |\
+  | \cf5 has_diary_password\cf2   | BOOLEAN   | Flag setup completato                       |\
+  | \cf5 diary_setup_at\cf2       | TIMESTAMP | Data setup                                  |\
+  | \cf5 remembered_devices\cf2   | JSONB     | \cf5 [\{token: "...", expires: "...", ua: "..."\}]\cf2  |\
+\
+  
+\f1\b NOTA
+\f0\b0 : Le colonne \cf5 wrapped_key_*\cf2  NON servono pi\'f9 (Zero Knowledge = no server key wrapping)\
+\
+  ---\
+  
+\f1\b FASE 2: BACKEND PHP
+\f0\b0 \
+\
+  
+\f1\b 2.1 Eliminare shareEntry()
+\f0\b0 \
+\
+  
+\f1\b File
+\f0\b0 : \cf5 app/Controllers/Api/EmotionalJournalController.php\cf2 \
+  - Eliminare metodo \cf5 shareEntry()\cf2  (linee ~799-1189)\
+\
+  
+\f1\b File
+\f0\b0 : \cf5 routes/api.php\cf2 \
+  - Eliminare riga 160: \cf5 $router->post("$apiPrefix/journal/share-entry", ...)\cf2 \
+\
+  
+\f1\b 2.2 Nuovi Endpoint API Diario Password
+\f0\b0 \
+\
+  \cf3 // routes/api.php\cf2 \
+  $router->post(\cf6 "$apiPrefix/journal/password/setup"\cf2 , [DiaryPasswordController::class, \cf6 'setup'\cf2 ], [\cf6 'auth'\cf2 ]);\
+  $router->post(\cf6 "$apiPrefix/journal/password/verify"\cf2 , [DiaryPasswordController::class, \cf6 'verify'\cf2 ], [\cf6 'auth'\cf2 ]);\
+  $router->post(\cf6 "$apiPrefix/journal/password/check-device"\cf2 , [DiaryPasswordController::class, \cf6 'checkDevice'\cf2 ], [\cf6 'auth'\cf2 ]);\
+  $router->delete(\cf6 "$apiPrefix/journal/password/forget-device"\cf2 , [DiaryPasswordController::class, \cf6 'forgetDevice'\cf2 ], [\cf6 'auth'\cf2 ]);\
+\
+  
+\f1\b 2.3 Nuovo Controller: DiaryPasswordController.php
+\f0\b0 \
+\
+  \cf4 namespace\cf2  Need2Talk\\Controllers\\Api;\
+\
+  \cf4 class DiaryPasswordController extends ApiController\cf2 \
+  \{\
+      \cf3 /**\cf2 \
+  \cf3      * POST /api/journal/password/setup\cf2 \
+  \cf3      * \cf2 \
+  \cf3      * Body: \{\cf2 \
+  \cf3      *   diary_password: "user_password",\cf2 \
+  \cf3      *   login_password: "current_login_password", // Per conferma\cf2 \
+  \cf3      *   kdf_salt: "base64_salt"  // Client genera salt\cf2 \
+  \cf3      * \}\cf2 \
+  \cf3      * \cf2 \
+  \cf3      * Response: \{ success: true, has_diary_password: true \}\cf2 \
+  \cf3      */\cf2 \
+      \cf4 public\cf2  \cf4 function\cf7  setup(): void\cf2 ;\
+\
+      \cf3 /**\cf2 \
+  \cf3      * POST /api/journal/password/verify\cf2 \
+  \cf3      * \cf2 \
+  \cf3      * Body: \{\cf2 \
+  \cf3      *   diary_password: "user_password",\cf2 \
+  \cf3      *   device_token: "optional_remember_token"\cf2 \
+  \cf3      * \}\cf2 \
+  \cf3      * \cf2 \
+  \cf3      * Response: \{ \cf2 \
+  \cf3      *   success: true, \cf2 \
+  \cf3      *   kdf_salt: "base64_salt",\cf2 \
+  \cf3      *   remember_token: "optional_30day_token"\cf2 \
+  \cf3      * \}\cf2 \
+  \cf3      */\cf2 \
+      \cf4 public\cf2  \cf4 function\cf7  verify(): void\cf2 ;\
+\
+      \cf3 /**\cf2 \
+  \cf3      * POST /api/journal/password/check-device\cf2 \
+  \cf3      * \cf2 \
+  \cf3      * Body: \{ device_token: "saved_token" \}\cf2 \
+  \cf3      * \cf2 \
+  \cf3      * Response: \{ \cf2 \
+  \cf3      *   valid: true/false, \cf2 \
+  \cf3      *   kdf_salt: "base64_salt_if_valid"\cf2 \
+  \cf3      * \}\cf2 \
+  \cf3      */\cf2 \
+      \cf4 public\cf2  \cf4 function\cf7  checkDevice(): void\cf2 ;\
+\
+      \cf3 /**\cf2 \
+  \cf3      * DELETE /api/journal/password/forget-device\cf2 \
+  \cf3      * \cf2 \
+  \cf3      * Logout from remembered device\cf2 \
+  \cf3      */\cf2 \
+      \cf4 public\cf2  \cf4 function\cf7  forgetDevice(): void\cf2 ;\
+  \}\
+\
+  
+\f1\b 2.4 Modificare EncryptionService.php
+\f0\b0 \
+\
+  
+\f1\b OPZIONE A
+\f0\b0 : Rimuovere completamente (il diario non usa pi\'f9 server-side keys)\
+  
+\f1\b OPZIONE B
+\f0\b0 : Mantenere solo per DM (se usato altrove)\
+\
+  Verifico se \'e8 usato altrove:\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf8 \uc0\u9210 \cf2  
+\f1\b Search
+\f0\b0 (pattern: "EncryptionService", path: "~/www.need2talk.it")\
+  \uc0\u9151  \'a0Found 
+\f1\b 21 
+\f0\b0 files \cf9 (ctrl+o to expand)\cf2 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf10 \uc0\u9210 \cf2  EncryptionService \'e8 usato in molti posti. Verifico se il server-side key management \'e8 usato per il journal o solo per altri scopi:\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf8 \uc0\u9210 \cf2  
+\f1\b Search
+\f0\b0 (pattern: "loadUserMasterKey|saveUserMasterKey", path: "~/www.need2talk.it", output_mode: "content")\
+  \uc0\u9151  \'a0Found 
+\f1\b 8 
+\f0\b0 lines \cf9 (ctrl+o to expand)\cf2 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf10 \uc0\u9210 \cf2  L'\cf5 EncryptionService\cf2  \'e8 usato per:\
+  1. 
+\f1\b Journal shareEntry
+\f0\b0  (linea 932) \uc0\u8594  DA ELIMINARE\
+  2. 
+\f1\b FriendshipKeyService
+\f0\b0  \uc0\u8594  per DM encryption (MANTIENI)\
+  3. 
+\f1\b UserController
+\f0\b0  \uc0\u8594  save/load user master keys (MANTIENI per compatibility)\
+\
+  
+\f1\b Decisione
+\f0\b0 : Manteniamo \cf5 EncryptionService.php\cf2  ma rimuoviamo solo l'uso nel Journal (shareEntry gi\'e0 da eliminare).\
+\
+  ---\
+  
+\f1\b FASE 3: FRONTEND JAVASCRIPT
+\f0\b0 \
+\
+  
+\f1\b 3.1 Nuovo modulo: DiaryEncryptionService.js
+\f0\b0 \
+\
+  \cf3 /**\cf2 \
+  \cf3  * DiaryEncryptionService - True E2E Client-Side Encryption\cf2 \
+  \cf3  * \cf2 \
+  \cf3  * ZERO KNOWLEDGE: Server never sees the DEK (Data Encryption Key)\cf2 \
+  \cf3  * \cf2 \
+  \cf3  * Flow:\cf2 \
+  \cf3  * 1. User creates diary password (first time)\cf2 \
+  \cf3  * 2. Client: PBKDF2(password, salt, 600k) \uc0\u8594  DEK (256-bit)\cf2 \
+  \cf3  * 3. DEK stored in sessionStorage (cleared on browser close)\cf2 \
+  \cf3  * 4. Remember device: encrypted token in localStorage (30 days)\cf2 \
+  \cf3  * 5. All diary content encrypted/decrypted locally with DEK\cf2 \
+  \cf3  */\cf2 \
+  \cf4 class DiaryEncryptionService \cf2 \{\
+      \cf3 // PBKDF2 parameters (OWASP recommended)\cf2 \
+      \cf4 static\cf2  ITERATIONS = \cf3 600000\cf2 ;  \cf3 // 600k iterations\cf2 \
+      \cf4 static\cf2  KEY_LENGTH = \cf3 256\cf2 ;     \cf3 // 256-bit key\cf2 \
+      \cf4 static\cf2  HASH = \cf6 'SHA-256'\cf2 ;\
+\
+      \cf3 // AES-256-GCM parameters\cf2 \
+      \cf4 static\cf2  ALGORITHM = \cf6 'AES-GCM'\cf2 ;\
+      \cf4 static\cf2  IV_LENGTH = \cf3 12\cf2 ;  \cf3 // 96 bits (GCM recommended)\cf2 \
+      \cf4 static\cf2  TAG_LENGTH = \cf3 128\cf2 ; \cf3 // 128 bits\cf2 \
+\
+      \cf3 // Storage keys\cf2 \
+      \cf4 static\cf2  DEK_SESSION_KEY = \cf6 'diary_dek'\cf2 ;\
+      \cf4 static\cf2  DEVICE_TOKEN_KEY = \cf6 'diary_device_token'\cf2 ;\
+\
+      \cf7 constructor(userUuid)\cf2  \{\
+          \cf11 this\cf2 .userUuid = userUuid;\
+          \cf11 this\cf2 .dek = \cf4 null\cf2 ;  \cf3 // Loaded from session or derived\cf2 \
+      \}\
+\
+      \cf3 /**\cf2 \
+  \cf3      * Setup diary password (first time)\cf2 \
+  \cf3      */\cf2 \
+      \cf4 async\cf2  setupPassword(diaryPassword, loginPassword);\
+\
+      \cf3 /**\cf2 \
+  \cf3      * Unlock diary with password\cf2 \
+  \cf3      */\cf2 \
+      \cf4 async\cf2  unlock(diaryPassword, rememberDevice = \cf4 false\cf2 );\
+\
+      \cf3 /**\cf2 \
+  \cf3      * Check if unlocked (DEK in session)\cf2 \
+  \cf3      */\cf2 \
+      isUnlocked();\
+\
+      \cf3 /**\cf2 \
+  \cf3      * Encrypt text content\cf2 \
+  \cf3      */\cf2 \
+      \cf4 async\cf2  encryptText(plaintext);\
+\
+      \cf3 /**\cf2 \
+  \cf3      * Decrypt text content\cf2 \
+  \cf3      */\cf2 \
+      \cf4 async\cf2  decryptText(ciphertext, iv);\
+\
+      \cf3 /**\cf2 \
+  \cf3      * Encrypt file (audio/photo)\cf2 \
+  \cf3      */\cf2 \
+      \cf4 async\cf2  encryptFile(file);\
+\
+      \cf3 /**\cf2 \
+  \cf3      * Decrypt file\cf2 \
+  \cf3      */\cf2 \
+      \cf4 async\cf2  decryptFile(encryptedBlob, iv);\
+\
+      \cf3 /**\cf2 \
+  \cf3      * Lock diary (clear DEK)\cf2 \
+  \cf3      */\cf2 \
+      lock();\
+  \}\
+\
+  
+\f1\b 3.2 Nuovo modulo: DiaryPasswordModal.js
+\f0\b0 \
+\
+  \cf3 /**\cf2 \
+  \cf3  * DiaryPasswordModal - Setup & Unlock UI\cf2 \
+  \cf3  * \cf2 \
+  \cf3  * Screens:\cf2 \
+  \cf3  * 1. Setup (first time): Create diary password + confirm + login password\cf2 \
+  \cf3  * 2. Unlock (every session): Enter diary password + remember checkbox\cf2 \
+  \cf3  * 3. Locked state: Show lock icon, click to unlock\cf2 \
+  \cf3  * \cf2 \
+  \cf3  * CSS: Uses existing modal patterns from app-post-login.css\cf2 \
+  \cf3  * NO NEW GLOBAL CSS CLASSES - scoped to .diary-password-modal\cf2 \
+  \cf3  */\cf2 \
+  \cf4 class DiaryPasswordModal \cf2 \{\
+      \cf7 constructor(diaryEncryptionService)\cf2  \{ ... \}\
+\
+      \cf3 /**\cf2 \
+  \cf3      * Show setup modal (first time)\cf2 \
+  \cf3      */\cf2 \
+      showSetup();\
+\
+      \cf3 /**\cf2 \
+  \cf3      * Show unlock modal\cf2 \
+  \cf3      */\cf2 \
+      showUnlock();\
+\
+      \cf3 /**\cf2 \
+  \cf3      * Show locked state in journal container\cf2 \
+  \cf3      */\cf2 \
+      showLockedState(container);\
+\
+      \cf3 /**\cf2 \
+  \cf3      * Check diary status and show appropriate UI\cf2 \
+  \cf3      */\cf2 \
+      \cf4 async\cf2  checkAndShow();\
+  \}\
+\
+  
+\f1\b 3.3 Modificare EmotionalJournal.js
+\f0\b0 \
+\
+  \cf3 // Before init(), check if diary is unlocked\cf2 \
+  \cf4 async\cf2  \cf7 init()\cf2  \{\
+      \cf3 // Check diary password status\cf2 \
+      \cf4 const\cf2  diaryService = \cf4 new\cf2  DiaryEncryptionService(\cf11 this\cf2 .userUuid);\
+\
+      \cf4 if\cf2  (!\cf4 await\cf2  diaryService.checkSetupStatus()) \{\
+          \cf3 // First time: show setup modal\cf2 \
+          \cf4 new\cf2  DiaryPasswordModal(diaryService).showSetup();\
+          \cf4 return\cf2 ;\
+      \}\
+\
+      \cf4 if\cf2  (!diaryService.isUnlocked()) \{\
+          \cf3 // Not unlocked: show unlock modal\cf2 \
+          \cf4 new\cf2  DiaryPasswordModal(diaryService).showUnlock();\
+          \cf4 return\cf2 ;\
+      \}\
+\
+      \cf3 // Continue normal init...\cf2 \
+  \}\
+\
+  
+\f1\b 3.4 Modificare EmotionalJournalEncryption.js
+\f0\b0 \
+\
+  - 
+\f1\b ELIMINARE
+\f0\b0 : \cf5 renderShareButton()\cf2 , \cf5 renderSharedBadge()\cf2 , \cf5 handleShareEntry()\cf2 \
+  - 
+\f1\b MODIFICARE
+\f0\b0 : \cf5 decryptText()\cf2 , \cf5 decryptAudio()\cf2  \uc0\u8594  usare DiaryEncryptionService invece di EncryptionService\
+\
+  ---\
+  
+\f1\b FASE 4: CSS (CRITICO - Nessun conflitto)
+\f0\b0 \
+\
+  
+\f1\b 4.1 CSS Scoped per Modal Password
+\f0\b0 \
+\
+  
+\f1\b File
+\f0\b0 : \cf5 public/assets/css/profile/diary-password-modal.css\cf2 \
+\
+  \cf3 /**\cf2 \
+  \cf3  * SCOPED CSS - Prefisso .diary-password-modal per TUTTI i selettori\cf2 \
+  \cf3  * NESSUNA classe globale che possa conflittare\cf2 \
+  \cf3  */\cf2 \
+\
+  .diary-password-modal \{\
+      \cf3 /* Modal container - overlay */\cf2 \
+  \}\
+\
+  .diary-password-modal__backdrop \{\
+      \cf3 /* Dark backdrop */\cf2 \
+  \}\
+\
+  .diary-password-modal__content \{\
+      \cf3 /* Modal box */\cf2 \
+  \}\
+\
+  .diary-password-modal__header \{ \}\
+  .diary-password-modal__body \{ \}\
+  .diary-password-modal__footer \{ \}\
+  .diary-password-modal__input \{ \}\
+  .diary-password-modal__btn \{ \}\
+  .diary-password-modal__btn--primary \{ \}\
+  .diary-password-modal__btn--secondary \{ \}\
+  .diary-password-modal__error \{ \}\
+  .diary-password-modal__strength \{ \}\
+  .diary-password-modal__remember \{ \}\
+\
+  
+\f1\b REGOLE CSS
+\f0\b0 :\
+  1. \uc0\u9989  TUTTI i selettori con prefisso \cf5 .diary-password-modal\cf2 \
+  2. \uc0\u9989  Nessun override di classi esistenti\
+  3. \uc0\u9989  Nessun uso di tag selectors (\cf5 input\cf2 , \cf5 button\cf2 )\
+  4. \uc0\u9989  BEM naming convention\
+\
+  ---\
+  
+\f1\b FASE 5: FLUSSO UX COMPLETO
+\f0\b0 \
+\
+  \uc0\u9484 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9488 \
+  \uc0\u9474                   FLUSSO UTENTE DIARIO E2E                    \u9474 \
+  \uc0\u9500 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9508 \
+  \uc0\u9474                                                              \u9474 \
+  \uc0\u9474   PRIMO ACCESSO (Setup):                                     \u9474 \
+  \uc0\u9474   \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472                                      \u9474 \
+  \uc0\u9474   1. User clicca tab "Diario"                               \u9474 \
+  \uc0\u9474   2. Modal Setup appare:                                     \u9474 \
+  \uc0\u9474      \u9500 \u9472  Input: Password Diario (min 8 char)                 \u9474 \
+  \uc0\u9474      \u9500 \u9472  Input: Conferma Password                            \u9474 \
+  \uc0\u9474      \u9500 \u9472  Input: Password Login (verifica identit\'e0)           \u9474 \
+  \uc0\u9474      \u9492 \u9472  Warning: "Password persa = dati persi FOREVER"      \u9474 \
+  \uc0\u9474   3. Client genera salt (32 bytes)                          \u9474 \
+  \uc0\u9474   4. Client hash password (Argon2id per storage)            \u9474 \
+  \uc0\u9474   5. API: POST /journal/password/setup                      \u9474 \
+  \uc0\u9474   6. Server salva: hash + salt + has
+\f2\i _diary_
+\f0\i0 password=true    \uc0\u9474 \
+  \uc0\u9474   7. Client: PBKDF2(password, salt) \u8594  DEK                   \u9474 \
+  \uc0\u9474   8. DEK salvato in sessionStorage                          \u9474 \
+  \uc0\u9474   9. Diario sbloccato \u8594  mostra form normale                 \u9474 \
+  \uc0\u9474                                                              \u9474 \
+  \uc0\u9474   ACCESSO SUCCESSIVO (Unlock):                              \u9474 \
+  \uc0\u9474   \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472                                 \u9474 \
+  \uc0\u9474   1. User clicca tab "Diario"                               \u9474 \
+  \uc0\u9474   2. Check localStorage per device token                     \u9474 \
+  \uc0\u9474      \u9500 \u9472  Se valido (< 30 giorni):                            \u9474 \
+  \uc0\u9474      \u9474   \u9500 \u9472  API: POST /journal/password/check-device         \u9474 \
+  \uc0\u9474      \u9474   \u9500 \u9472  Server verifica token                            \u9474 \
+  \uc0\u9474      \u9474   \u9500 \u9472  Client: salt salvato localmente                  \u9474 \
+  \uc0\u9474      \u9474   \u9500 \u9472  Client: PBKDF2(cached
+\f2\i _password, salt) \uc0\u8594  DEK     \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474      \u9474   \u9492 \u9472  Diario sbloccato automaticamente                 \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474      \u9492 \u9472  Se non valido o assente:                            \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474         \u9500 \u9472  Modal Unlock appare:                              \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474         \u9474   \u9500 \u9472  Input: Password Diario                        \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474         \u9474   \u9492 \u9472  Checkbox: "Ricorda questo dispositivo"        \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474         \u9500 \u9472  API: POST /journal/password/verify               \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474         \u9500 \u9472  Server: verifica hash, ritorna salt              \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474         \u9500 \u9472  Client: PBKDF2(password, salt) \u8594  DEK            \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474         \u9500 \u9472  Se remember: genera device token + localStorage  \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474         \u9492 \u9472  Diario sbloccato                                 \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474                                                              \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   SALVATAGGIO ENTRY:                                        \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472                                         \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   1. User scrive testo / registra audio                     \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   2. Client: encrypt(content, DEK) \u8594  ciphertext + IV       \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   3. API: POST /journal/entry                               \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474      Body: \{ text_
+\f0\i0 content
+\f2\i _encrypted, text_
+\f0\i0 content
+\f2\i _iv, ... \} \uc0\u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   4. Server salva SOLO ciphertext (non pu\'f2 decrittare)      \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474                                                              \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   LETTURA ENTRY:                                            \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472                                             \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   1. API: GET /journal/entry/\{date\}                         \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   2. Server ritorna ciphertext + IV                         \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   3. Client: decrypt(ciphertext, DEK, IV) \u8594  plaintext       \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   4. Renderizza contenuto                                   \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474                                                              \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   REMEMBER DEVICE (30 giorni):                              \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472                                 \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   - Device token: crypto random 64 bytes, base64           \u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   - Server: token_
+\f0\i0 hash + expires + user
+\f2\i _agent               \uc0\u9474 
+\f0\i0 \
+  
+\f2\i \uc0\u9474   - Client: token + cached_
+\f0\i0 salt in localStorage             \uc0\u9474 \
+  \uc0\u9474   - Password NON salvata (deriva DEK ogni volta)           \u9474 \
+  \uc0\u9474   - Logout/forget: API DELETE + clear localStorage          \u9474 \
+  \uc0\u9474                                                              \u9474 \
+  \uc0\u9474   PASSWORD DIMENTICATA:                                     \u9474 \
+  \uc0\u9474   \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472                                       \u9474 \
+  \uc0\u9474   \u10060  NESSUN RECOVERY                                         \u9474 \
+  \uc0\u9474   - Server non ha DEK                                        \u9474 \
+  \uc0\u9474   - Tutti i dati diario sono persi FOREVER                  \u9474 \
+  \uc0\u9474   - Warning mostrato durante setup                          \u9474 \
+  \uc0\u9474                                                              \u9474 \
+  \uc0\u9492 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9496 \
+\
+  ---\
+  
+\f1\b FASE 6: FILES DA CREARE/MODIFICARE
+\f0\b0 \
+\
+  
+\f1\b CREARE (Nuovi):
+\f0\b0 \
+\
+  app/Controllers/Api/DiaryPasswordController.php       (~200 linee)\
+  public/assets/js/profile/DiaryEncryptionService.js   (~400 linee)\
+  public/assets/js/profile/DiaryPasswordModal.js       (~300 linee)\
+  public/assets/css/profile/diary-password-modal.css   (~150 linee)\
+  database/migrations/2025
+\f2\i _12_
+\f0\i0 10
+\f2\i _diary_
+\f0\i0 e2e
+\f2\i _cleanup.sql (~50 linee)
+\f0\i0 \
+\
+  
+\f1\b MODIFICARE:
+\f0\b0 \
+\
+  routes/api.php                                        (elimina shareEntry, aggiungi password endpoints)\
+  app/Controllers/Api/EmotionalJournalController.php   (elimina shareEntry ~400 linee)\
+  public/assets/js/profile/EmotionalJournal.js         (aggiungi check unlock)\
+  public/assets/js/profile/EmotionalJournalEncryption.js (elimina share, usa DiaryEncryptionService)\
+  public/assets/js/profile/JournalTimeline.js          (elimina share buttons)\
+\
+  
+\f1\b ELIMINARE:
+\f0\b0 \
+\
+  database/migrations/2025
+\f2\i _01_
+\f0\i0 07
+\f2\i _phase1_
+\f0\i0 privacy
+\f2\i _journal_
+\f0\i0 system.sql.bak2\
+  database/migrations/2025
+\f2\i _01_
+\f0\i0 07
+\f2\i _phase1_
+\f0\i0 privacy
+\f2\i _journal_
+\f0\i0 system.sql.bak3\
+\
+  ---\
+  
+\f1\b FASE 7: ORDINE DI ESECUZIONE
+\f0\b0 \
+\
+  1. 
+\f1\b Migration database
+\f0\b0  (cleanup schema)\
+  2. 
+\f1\b Backend PHP
+\f0\b0  (DiaryPasswordController + cleanup)\
+  3. 
+\f1\b Frontend JS
+\f0\b0  (DiaryEncryptionService + Modal)\
+  4. 
+\f1\b CSS scoped
+\f0\b0  (diary-password-modal.css)\
+  5. 
+\f1\b Integrazione
+\f0\b0  (modifiche EmotionalJournal.js)\
+  6. 
+\f1\b Test completo
+\f0\b0 \
+  7. 
+\f1\b Deploy su server
+\f0\b0  + rebuild Tailwind se necessario\
+\
+\
+\
+\
+}

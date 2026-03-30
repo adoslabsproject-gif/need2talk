@@ -1,0 +1,24 @@
+[Unit]
+Description=Need2Talk Systemd API Gateway (Enterprise)
+Documentation=https://need2talk.it/docs/systemd-api
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+User=root
+WorkingDirectory=/var/www/need2talk
+
+ExecStart=/usr/bin/python3 /var/www/need2talk/scripts/systemd-api-gateway.py
+
+# Logging
+StandardOutput=append:/var/www/need2talk/storage/logs/systemd-api-gateway.log
+StandardError=append:/var/www/need2talk/storage/logs/systemd-api-gateway.log
+
+# Security
+PrivateTmp=yes
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

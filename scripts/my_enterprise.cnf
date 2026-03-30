@@ -1,0 +1,55 @@
+# need2talk Enterprise MySQL Configuration
+# Optimized for 100,000+ concurrent users
+
+[mysqld]
+# CONNECTION SETTINGS
+max_connections = 2000
+max_user_connections = 1000
+max_connect_errors = 100000
+connect_timeout = 30
+wait_timeout = 3600
+interactive_timeout = 3600
+
+# INNODB PERFORMANCE SETTINGS
+innodb_buffer_pool_size = 2G
+innodb_log_buffer_size = 64M
+innodb_log_file_size = 256M
+innodb_flush_log_at_trx_commit = 2
+innodb_flush_method = O_DIRECT
+innodb_io_capacity = 2000
+innodb_io_capacity_max = 4000
+innodb_read_io_threads = 8
+innodb_write_io_threads = 8
+
+# TABLE CACHE
+table_open_cache = 4000
+table_definition_cache = 2000
+
+# THREAD SETTINGS
+thread_cache_size = 50
+
+# MEMORY SETTINGS
+sort_buffer_size = 4M
+read_buffer_size = 2M
+read_rnd_buffer_size = 4M
+join_buffer_size = 4M
+key_buffer_size = 256M
+
+# LOGGING
+slow_query_log = 1
+long_query_time = 2.0
+log_queries_not_using_indexes = 1
+
+# BINARY LOG SETTINGS
+binlog_expire_logs_seconds = 604800  # 7 days
+max_binlog_size = 1G
+
+# SECURITY
+max_allowed_packet = 64M
+
+# CHARACTER SET
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+# SKIP SETTINGS
+skip-name-resolve

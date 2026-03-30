@@ -1,0 +1,7 @@
+#!/bin/bash
+# 🚀 NEED2TALK - Clean PHP wrapper without Xdebug (macOS/MAMP)
+# Uses MAMP PHP directly with Xdebug disabled via environment
+
+# Use MAMP PHP 8.3 binary with Xdebug disabled
+export XDEBUG_MODE=off
+exec /Applications/MAMP/bin/php/php8.3.14/bin/php -d xdebug.mode=off "$@"

@@ -1,0 +1,44 @@
+[Unit]
+Description=Need2Talk Email Workers (Enterprise Galaxy)
+Documentation=https://need2talk.it/docs/email-workers
+After=docker.service
+Requires=docker.service
+PartOf=docker.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=10
+StartLimitInterval=300
+StartLimitBurst=10
+
+# ENTERPRISE GALAXY: Spawn 2 workers simultaneously inside Docker container
+ExecStart=/usr/bin/docker compose -f /var/www/need2talk/docker-compose.yml exec -T php sh /var/www/html/scripts/start-systemd-workers.sh
+
+# Graceful shutdown (SIGTERM → 30s timeout → SIGKILL)
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Environment
+Environment="DOCKER_HOST=unix:///var/run/docker.sock"
+WorkingDirectory=/var/www/need2talk
+
+# Logging
+StandardOutput=append:/var/www/need2talk/storage/logs/systemd-email-workers.log
+StandardError=append:/var/www/need2talk/storage/logs/systemd-email-workers.log
+SyslogIdentifier=need2talk-workers
+
+# Security & Performance
+User=root
+Group=docker
+Nice=5
+LimitNOFILE=65536
+PrivateTmp=yes
+NoNewPrivileges=true
+
+# Health check watchdog (optional)
+WatchdogSec=120
+
+[Install]
+WantedBy=multi-user.target

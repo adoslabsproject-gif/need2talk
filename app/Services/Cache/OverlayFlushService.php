@@ -1,0 +1,1552 @@
+<?php
+
+namespace Need2Talk\Services\Cache;
+
+use Need2Talk\Services\Logger;
+use Need2Talk\Repositories\Audio\CommentRepository;
+
+/**
+ * OverlayFlushService - Flush Write-Behind Buffer to Database
+ *
+ * ENTERPRISE GALAXY V6.9 (2025-11-30)
+ *
+ * V6.9 FEATURES:
+ * - Atomic Lua scripts for race-condition-free flush (plays + comments)
+ * - Queue health monitoring with WARNING/CRITICAL/OVERFLOW alerts
+ * - Deduplication of +1/-1 spam events handled at flush time
+ * - Events auto-expire via 24h TTL (no explicit cleanup needed)
+ *
+ * Unified flush service for all overlay types:
+ * - Reactions (audio post reactions)
+ * - Views (audio post play counts)
+ * - Comment Likes (comment like/unlike) [V4.2]
+ * - Comments (comment count updates) [V4.2]
+ * - Friendships (friend requests, blocks, status changes)
+ * - User Settings (profile, privacy, notifications)
+ *
+ * Called by overlay-flush-worker cron every 5 minutes with adaptive scheduling.
+ *
+ * Strategy:
+ * - Batch processing (100 items per flush per type)
+ * - Transaction per batch
+ * - Deduplication (same entity = single final state)
+ * - Logging to overlay_flush_log (optional monitoring)
+ *
+ * ARCHITECTURE:
+ * ┌───────────────────────────────────────────────────────────────────────────────┐
+ * │ Type           │ Dirty Key                      │ Flush Strategy            │
+ * ├───────────────────────────────────────────────────────────────────────────────┤
+ * │ Reactions      │ overlay:dirty:reactions        │ UPSERT/DELETE per item    │
+ * │ Views          │ overlay:dirty:views            │ Aggregate INCREMENT       │
+ * │ Comment Likes  │ overlay:dirty:comment_likes    │ INSERT/DELETE per item    │
+ * │ Comments       │ overlay:dirty:comments         │ Update denorm counters    │
+ * │ Friendships    │ overlay:dirty:friendships      │ Status already in DB      │
+ * │ User Settings  │ overlay:dirty:user_settings    │ Already persisted         │
+ * └───────────────────────────────────────────────────────────────────────────────┘
+ *
+ * NOTE: Friendships and User Settings are already written to DB synchronously.
+ * Their dirty sets are used only for cache invalidation signaling, not data flush.
+ * The overlay provides immediate visibility while DB query cache catches up.
+ *
+ * @package Need2Talk\Services\Cache
+ */
+class OverlayFlushService
+{
+    private const BATCH_SIZE = 100;
+
+    // =========================================================================
+    // ENTERPRISE V6.9 (2025-11-30): QUEUE HEALTH MONITORING
+    // =========================================================================
+    // Alert thresholds for queue overflow detection
+    // If any queue exceeds these thresholds, emit ALERT level log
+    // With 30s flush interval, these represent ~5min of events without flush
+    private const QUEUE_WARNING_THRESHOLD = 1000;    // Warning: queue getting large
+    private const QUEUE_CRITICAL_THRESHOLD = 5000;   // Critical: flush likely failing
+    private const QUEUE_OVERFLOW_THRESHOLD = 10000;  // Overflow: data loss imminent
+
+    // TTL for events in sorted sets (matches OverlayService::TTL_EVENTS)
+    private const EVENT_TTL_HOURS = 24;
+
+    // Lua script for atomic ZCARD + DELETE (prevents race condition)
+    // Returns: count of events before deletion
+    private const LUA_ATOMIC_FLUSH = <<<'LUA'
+local key = KEYS[1]
+local count = redis.call('ZCARD', key)
+if count > 0 then
+    redis.call('DEL', key)
+end
+return count
+LUA;
+
+    // Lua script for atomic ZRANGE + SUM + DELETE for comment deltas
+    // Returns: sum of all delta values in the sorted set
+    // @deprecated Use LUA_ATOMIC_DELTA_FLUSH_TIMESTAMP instead
+    private const LUA_ATOMIC_DELTA_FLUSH = <<<'LUA'
+local key = KEYS[1]
+local members = redis.call('ZRANGE', key, 0, -1)
+local total = 0
+for i, member in ipairs(members) do
+    local delta = tonumber(string.match(member, '^(-?%d+):'))
+    if delta then
+        total = total + delta
+    end
+end
+if #members > 0 then
+    redis.call('DEL', key)
+end
+return total
+LUA;
+
+    // =========================================================================
+    // ENTERPRISE V10.153 (2025-12-09): TIMESTAMP-BASED FLUSH
+    // =========================================================================
+    // This Lua script uses a flush timestamp to track what's been flushed:
+    // 1. Gets flush timestamp (last flush time, or 0 if never flushed)
+    // 2. Sums deltas of events with score > flush_timestamp (NEW events only)
+    // 3. Updates flush timestamp to max event score
+    // 4. Prunes events older than (now - 6 minutes) for cleanup
+    //
+    // KEY INSIGHT:
+    // - Flush only sums NEW events (since last flush) → no double counting
+    // - getBatchCommentDeltas() sums ALL events → delta since first event
+    // - Precomputed feed (5min TTL) + ALL events = correct count
+    // - Events older than 6min are pruned (feed has been regenerated by then)
+    //
+    // Flow:
+    // 1. Precomputed feed cached at T0 with comment_count=5
+    // 2. User comments at T1 → event +1
+    // 3. Reload → precomputed(5) + delta(1) = 6 ✓
+    // 4. Flush at T2 → sum events > 0 = +1, flush_ts = T1, DB = 6
+    // 5. Another comment at T3 → event +1
+    // 6. Reload → precomputed(5) + delta(2) = 7 ✓
+    // 7. Flush at T4 → sum events > T1 = +1, flush_ts = T3, DB = 7
+    // 8. Precomputed regenerated at T0+5min with DB=7
+    // 9. Prune events < T4-360s → old events removed
+    // 10. Reload → precomputed(7) + delta(0 or new) = correct!
+    // =========================================================================
+    private const LUA_ATOMIC_DELTA_FLUSH_TIMESTAMP = <<<'LUA'
+local eventKey = KEYS[1]
+local flushTsKey = KEYS[2]
+local currentTime = tonumber(ARGV[1])
+local pruneThreshold = tonumber(ARGV[2])
+
+-- Get last flush timestamp (0 if never flushed)
+local lastFlushTs = tonumber(redis.call('GET', flushTsKey)) or 0
+
+-- Get events AFTER last flush timestamp (NEW events only)
+local members = redis.call('ZRANGEBYSCORE', eventKey, '(' .. lastFlushTs, currentTime, 'WITHSCORES')
+
+local total = 0
+local maxScore = lastFlushTs
+
+-- Sum deltas and find max score
+for i = 1, #members, 2 do
+    local member = members[i]
+    local score = tonumber(members[i + 1])
+    local delta = tonumber(string.match(member, '^(-?%d+):'))
+    if delta then
+        total = total + delta
+    end
+    if score and score > maxScore then
+        maxScore = score
+    end
+end
+
+-- Update flush timestamp if we processed any events
+-- ENTERPRISE V10.154: Use string.format to preserve full precision (6 decimals)
+-- tostring() truncates precision causing score > flush_ts comparison issues
+if maxScore > lastFlushTs then
+    redis.call('SET', flushTsKey, string.format("%.6f", maxScore), 'EX', 86400)
+end
+
+-- Prune old events (older than pruneThreshold) for cleanup
+-- This keeps the sorted set clean while preserving recent events
+if pruneThreshold > 0 then
+    redis.call('ZREMRANGEBYSCORE', eventKey, '-inf', pruneThreshold)
+end
+
+return total
+LUA;
+
+    private static ?self $instance = null;
+    private WriteBehindBuffer $buffer;
+    private OverlayService $overlay;
+    private ?FriendshipOverlayService $friendshipOverlay = null;
+    private ?UserSettingsOverlayService $settingsOverlay = null;
+    private ?CommentRepository $commentRepository = null;
+
+    // Cached Lua script SHAs for performance
+    private ?string $luaAtomicFlushSha = null;
+    private ?string $luaDeltaFlushSha = null;
+    private ?string $luaDeltaFlushTimestampSha = null;
+
+    private function __construct()
+    {
+        $this->buffer = WriteBehindBuffer::getInstance();
+        $this->overlay = OverlayService::getInstance();
+        $this->friendshipOverlay = FriendshipOverlayService::getInstance();
+        $this->settingsOverlay = UserSettingsOverlayService::getInstance();
+        $this->commentRepository = new CommentRepository();
+    }
+
+    public static function getInstance(): self
+    {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    /**
+     * ENTERPRISE V6.9 (2025-11-30): Queue Health Check
+     *
+     * Monitors all overlay queues for overflow conditions.
+     * Called BEFORE every flush to detect and alert on queue buildup.
+     *
+     * Alert Levels:
+     * - WARNING (1000+): Queue growing, flush may be slow
+     * - CRITICAL (5000+): Queue very large, flush likely failing repeatedly
+     * - OVERFLOW (10000+): Data loss imminent, events will expire before flush
+     *
+     * @return array Health status per queue type
+     */
+    public function checkQueueHealth(): array
+    {
+        $redis = $this->overlay->getRedisConnection();
+        if (!$redis) {
+            return ['status' => 'unavailable', 'message' => 'Redis connection unavailable'];
+        }
+
+        $health = [
+            'status' => 'healthy',
+            'timestamp' => time(),
+            'ttl_hours' => self::EVENT_TTL_HOURS,
+            'queues' => [],
+            'alerts' => [],
+        ];
+
+        // Queue patterns to check
+        $queuePatterns = [
+            'plays' => 'gen:overlay:plays:*',
+            'comments' => 'gen:overlay:comments:*',
+            'reactions' => 'overlay:dirty:reactions',
+            'comment_likes' => 'overlay:dirty:comment_likes',
+            'friendships' => 'overlay:dirty:friendships',
+            'settings' => 'overlay:dirty:user_settings',
+        ];
+
+        $totalEvents = 0;
+        $maxQueueSize = 0;
+        $worstQueue = null;
+
+        foreach ($queuePatterns as $type => $pattern) {
+            try {
+                $queueSize = 0;
+
+                if (str_contains($pattern, '*')) {
+                    // Pattern match - scan for keys and sum sizes
+                    // ENTERPRISE GALAXY FIX (2025-11-30): PHP 8+ Redis::scan() signature change
+                    // Old: scan($cursor, ['MATCH' => $pattern, 'COUNT' => 1000])
+                    // New: scan($cursor, $pattern, $count) - separate parameters
+                    $cursor = null;
+                    $keys = [];
+                    do {
+                        $foundKeys = $redis->scan($cursor, $pattern, 1000);
+                        if ($foundKeys === false) break;
+                        $keys = array_merge($keys, $foundKeys);
+                    } while ($cursor !== 0);
+
+                    // Get size of each key
+                    foreach ($keys as $key) {
+                        $keyType = $redis->type($key);
+                        if ($keyType === \Redis::REDIS_ZSET) {
+                            $queueSize += $redis->zCard($key);
+                        } elseif ($keyType === \Redis::REDIS_SET) {
+                            $queueSize += $redis->sCard($key);
+                        } elseif ($keyType === \Redis::REDIS_LIST) {
+                            $queueSize += $redis->lLen($key);
+                        }
+                    }
+
+                    $health['queues'][$type] = [
+                        'size' => $queueSize,
+                        'keys_count' => count($keys),
+                    ];
+                } else {
+                    // Direct key lookup
+                    $keyType = $redis->type($pattern);
+                    if ($keyType === \Redis::REDIS_ZSET) {
+                        $queueSize = $redis->zCard($pattern);
+                    } elseif ($keyType === \Redis::REDIS_SET) {
+                        $queueSize = $redis->sCard($pattern);
+                    } elseif ($keyType === \Redis::REDIS_LIST) {
+                        $queueSize = $redis->lLen($pattern);
+                    }
+
+                    $health['queues'][$type] = [
+                        'size' => $queueSize,
+                    ];
+                }
+
+                $totalEvents += $queueSize;
+
+                if ($queueSize > $maxQueueSize) {
+                    $maxQueueSize = $queueSize;
+                    $worstQueue = $type;
+                }
+
+                // Check thresholds and emit alerts
+                if ($queueSize >= self::QUEUE_OVERFLOW_THRESHOLD) {
+                    $health['status'] = 'overflow';
+                    $health['queues'][$type]['alert'] = 'OVERFLOW';
+                    $health['alerts'][] = [
+                        'level' => 'alert',
+                        'queue' => $type,
+                        'size' => $queueSize,
+                        'threshold' => self::QUEUE_OVERFLOW_THRESHOLD,
+                        'message' => "Queue '$type' has $queueSize events - DATA LOSS IMMINENT (TTL: {$health['ttl_hours']}h)",
+                    ];
+
+                    // ENTERPRISE: Emit ALERT level log for immediate attention
+                    Logger::overlay('alert', "QUEUE OVERFLOW: $type", [
+                        'queue' => $type,
+                        'size' => $queueSize,
+                        'threshold' => self::QUEUE_OVERFLOW_THRESHOLD,
+                        'ttl_hours' => self::EVENT_TTL_HOURS,
+                        'action_required' => 'Check flush worker status immediately',
+                    ]);
+
+                } elseif ($queueSize >= self::QUEUE_CRITICAL_THRESHOLD) {
+                    if ($health['status'] !== 'overflow') {
+                        $health['status'] = 'critical';
+                    }
+                    $health['queues'][$type]['alert'] = 'CRITICAL';
+                    $health['alerts'][] = [
+                        'level' => 'critical',
+                        'queue' => $type,
+                        'size' => $queueSize,
+                        'threshold' => self::QUEUE_CRITICAL_THRESHOLD,
+                        'message' => "Queue '$type' has $queueSize events - flush may be failing",
+                    ];
+
+                    Logger::overlay('critical', "QUEUE CRITICAL: $type", [
+                        'queue' => $type,
+                        'size' => $queueSize,
+                        'threshold' => self::QUEUE_CRITICAL_THRESHOLD,
+                    ]);
+
+                } elseif ($queueSize >= self::QUEUE_WARNING_THRESHOLD) {
+                    if ($health['status'] === 'healthy') {
+                        $health['status'] = 'warning';
+                    }
+                    $health['queues'][$type]['alert'] = 'WARNING';
+                    $health['alerts'][] = [
+                        'level' => 'warning',
+                        'queue' => $type,
+                        'size' => $queueSize,
+                        'threshold' => self::QUEUE_WARNING_THRESHOLD,
+                        'message' => "Queue '$type' growing: $queueSize events",
+                    ];
+
+                    Logger::overlay('warning', "QUEUE WARNING: $type", [
+                        'queue' => $type,
+                        'size' => $queueSize,
+                        'threshold' => self::QUEUE_WARNING_THRESHOLD,
+                    ]);
+                }
+
+            } catch (\Exception $e) {
+                $health['queues'][$type] = [
+                    'error' => $e->getMessage(),
+                ];
+                Logger::overlay('error', "Queue health check failed: $type", [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $health['total_events'] = $totalEvents;
+        $health['max_queue_size'] = $maxQueueSize;
+        $health['worst_queue'] = $worstQueue;
+
+        return $health;
+    }
+
+    /**
+     * ENTERPRISE V6.9: Atomic flush using Lua script
+     *
+     * Atomically counts and deletes events from a sorted set.
+     * Prevents race condition where events arrive between ZCARD and DEL.
+     *
+     * @param string $key Redis sorted set key
+     * @return int Count of events flushed
+     */
+    private function atomicFlushSortedSet(string $key): int
+    {
+        $redis = $this->overlay->getRedisConnection();
+        if (!$redis) {
+            return 0;
+        }
+
+        try {
+            // Load script if not cached
+            if ($this->luaAtomicFlushSha === null) {
+                $this->luaAtomicFlushSha = $redis->script('LOAD', self::LUA_ATOMIC_FLUSH);
+            }
+
+            // Execute atomic ZCARD + DELETE
+            $count = $redis->evalSha($this->luaAtomicFlushSha, [$key], 1);
+
+            return (int) $count;
+
+        } catch (\Exception $e) {
+            // Fallback to non-atomic if Lua fails (e.g., script evicted)
+            Logger::overlay('warning', 'Atomic flush fallback to non-atomic', [
+                'key' => $key,
+                'error' => $e->getMessage(),
+            ]);
+
+            $count = $redis->zCard($key);
+            if ($count > 0) {
+                $redis->del($key);
+            }
+            return $count;
+        }
+    }
+
+    /**
+     * ENTERPRISE V6.9: Atomic delta flush using Lua script
+     *
+     * Atomically sums all delta values and deletes events from a sorted set.
+     * Used for comment count deltas (+1/-1 operations).
+     *
+     * @param string $key Redis sorted set key
+     * @return int Sum of all deltas
+     */
+    private function atomicDeltaFlushSortedSet(string $key): int
+    {
+        $redis = $this->overlay->getRedisConnection();
+        if (!$redis) {
+            return 0;
+        }
+
+        try {
+            // Load script if not cached
+            if ($this->luaDeltaFlushSha === null) {
+                $this->luaDeltaFlushSha = $redis->script('LOAD', self::LUA_ATOMIC_DELTA_FLUSH);
+            }
+
+            // Execute atomic ZRANGE + SUM + DELETE
+            $delta = $redis->evalSha($this->luaDeltaFlushSha, [$key], 1);
+
+            return (int) $delta;
+
+        } catch (\Exception $e) {
+            // Fallback to non-atomic
+            Logger::overlay('warning', 'Atomic delta flush fallback to non-atomic', [
+                'key' => $key,
+                'error' => $e->getMessage(),
+            ]);
+
+            // Non-atomic fallback (same logic as Lua script)
+            $members = $redis->zRange($key, 0, -1);
+            $total = 0;
+            foreach ($members as $member) {
+                if (preg_match('/^(-?\d+):/', $member, $matches)) {
+                    $total += (int) $matches[1];
+                }
+            }
+            if (count($members) > 0) {
+                $redis->del($key);
+            }
+            return $total;
+        }
+    }
+
+    /**
+     * ENTERPRISE V10.153 (2025-12-09): Atomic delta flush with timestamp tracking
+     *
+     * Uses flush timestamp to track what's been flushed to DB:
+     * 1. Gets last flush timestamp
+     * 2. Sums only NEW events (score > flush_ts) → no double counting
+     * 3. Updates flush timestamp
+     * 4. Prunes events older than 6 minutes (precomputed feed has been regenerated)
+     *
+     * @param string $eventKey Redis sorted set key (gen:overlay:comments:{postId})
+     * @param int $postId Post ID (used for flush timestamp key)
+     * @return int Sum of NEW deltas (events since last flush)
+     */
+    private function atomicDeltaFlushWithTimestamp(string $eventKey, int $postId): int
+    {
+        $redis = $this->overlay->getRedisConnection();
+        if (!$redis) {
+            return 0;
+        }
+
+        $flushTsKey = 'gen:flush:comments:' . $postId;
+        $currentTime = microtime(true);
+        // Prune events older than 6 minutes (feed TTL 5min + 1min buffer)
+        $pruneThreshold = $currentTime - 360;
+
+        try {
+            // Load script if not cached
+            if ($this->luaDeltaFlushTimestampSha === null) {
+                $this->luaDeltaFlushTimestampSha = $redis->script('LOAD', self::LUA_ATOMIC_DELTA_FLUSH_TIMESTAMP);
+            }
+
+            // Execute atomic flush (2 keys: eventKey, flushTsKey; 2 args: currentTime, pruneThreshold)
+            // phpredis signature: evalSha($sha, $keys_and_args_array, $num_keys)
+            $delta = $redis->evalSha(
+                $this->luaDeltaFlushTimestampSha,
+                [$eventKey, $flushTsKey, (string) $currentTime, (string) $pruneThreshold],
+                2
+            );
+
+            return (int) $delta;
+
+        } catch (\Exception $e) {
+            // Fallback to non-atomic
+            Logger::overlay('warning', 'V10.153 Atomic flush fallback to non-atomic', [
+                'event_key' => $eventKey,
+                'post_id' => $postId,
+                'error' => $e->getMessage(),
+            ]);
+
+            // Non-atomic fallback (same logic as Lua script)
+            $lastFlushTs = (float) ($redis->get($flushTsKey) ?: 0);
+
+            // Get events AFTER last flush timestamp
+            $members = $redis->zRangeByScore($eventKey, '(' . $lastFlushTs, (string) $currentTime, ['withscores' => true]);
+            $total = 0;
+            $maxScore = $lastFlushTs;
+
+            foreach ($members as $member => $score) {
+                if (preg_match('/^(-?\d+):/', $member, $matches)) {
+                    $total += (int) $matches[1];
+                }
+                if ($score > $maxScore) {
+                    $maxScore = $score;
+                }
+            }
+
+            // Update flush timestamp
+            if ($maxScore > $lastFlushTs) {
+                $redis->setex($flushTsKey, 86400, (string) $maxScore);
+            }
+
+            // Prune old events
+            $redis->zRemRangeByScore($eventKey, '-inf', (string) $pruneThreshold);
+
+            return $total;
+        }
+    }
+
+    /**
+     * Main flush entry point (called by overlay-flush-worker)
+     *
+     * ENTERPRISE V6.9 (2025-11-30): Enhanced with queue health monitoring
+     *
+     * Flushes all overlay types in order:
+     * 1. Queue health check (alert on overflow)
+     * 2. Reactions (write-behind, needs DB sync)
+     * 3. Views (write-behind, needs DB sync)
+     * 4. Friendships (cleanup dirty set, DB already synced)
+     * 5. User Settings (cleanup dirty set, DB already synced)
+     *
+     * ENTERPRISE GALAXY V4.1: Each type has independent error handling.
+     * A failure in one type does NOT block the others.
+     *
+     * @return array Flush results with counts per type
+     */
+    public function flush(): array
+    {
+        $startTime = microtime(true);
+        $results = [
+            'reactions_flushed' => 0,
+            'plays_flushed' => 0,
+            'plays_v11_flushed' => 0,       // V11 absolute value
+            'comment_likes_flushed' => 0,
+            'comments_flushed' => 0,
+            'comments_v6_flushed' => 0,
+            'comments_v11_flushed' => 0,    // V11 absolute value
+            'friendships_cleaned' => 0,
+            'settings_cleaned' => 0,
+            'queue_health' => null,
+        ];
+        $errors = [];
+        $hasErrors = false;
+
+        // ENTERPRISE V6.9: Check queue health BEFORE flush
+        // This detects if flush worker has been failing and alerts immediately
+        try {
+            $results['queue_health'] = $this->checkQueueHealth();
+        } catch (\Exception $e) {
+            Logger::overlay('error', 'Queue health check failed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // 1. Flush reactions (write-behind: overlay → DB)
+        // Independent try/catch - failure here doesn't block views flush
+        try {
+            $results['reactions_flushed'] = $this->flushReactions();
+        } catch (\Exception $e) {
+            $hasErrors = true;
+            $errors['reactions'] = $e->getMessage();
+            Logger::overlay('error', 'Flush reactions failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+
+        // 2. Flush V6 plays (generational overlay → DB) [V6]
+        // ENTERPRISE V6: Views removed - audio posts only have plays/listens
+        try {
+            $results['plays_flushed'] = $this->flushPlaysV6();
+        } catch (\Exception $e) {
+            $hasErrors = true;
+            $errors['plays'] = $e->getMessage();
+            Logger::overlay('error', 'Flush V6 plays failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+
+        // 3. Flush comment likes (write-behind: overlay → DB) [V4.2]
+        try {
+            $results['comment_likes_flushed'] = $this->flushCommentLikes();
+        } catch (\Exception $e) {
+            $hasErrors = true;
+            $errors['comment_likes'] = $e->getMessage();
+            Logger::overlay('error', 'Flush comment likes failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+
+        // 4. Flush comments (update denormalized counters) [V4.2]
+        try {
+            $results['comments_flushed'] = $this->flushComments();
+        } catch (\Exception $e) {
+            $hasErrors = true;
+            $errors['comments'] = $e->getMessage();
+            Logger::overlay('error', 'Flush comments failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+
+        // 4.5. Flush V6 comments (generational overlay → DB) [V6]
+        try {
+            $results['comments_v6_flushed'] = $this->flushCommentsV6();
+        } catch (\Exception $e) {
+            $hasErrors = true;
+            $errors['comments_v6'] = $e->getMessage();
+            Logger::overlay('error', 'Flush V6 comments failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+
+        // 4.6. Flush V11 plays (absolute value overlay → DB) [V11]
+        try {
+            $results['plays_v11_flushed'] = $this->flushPlaysV11();
+        } catch (\Exception $e) {
+            $hasErrors = true;
+            $errors['plays_v11'] = $e->getMessage();
+            Logger::overlay('error', 'Flush V11 plays failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+
+        // 4.7. Flush V11 comments (absolute value overlay → DB) [V11]
+        try {
+            $results['comments_v11_flushed'] = $this->flushCommentsV11();
+        } catch (\Exception $e) {
+            $hasErrors = true;
+            $errors['comments_v11'] = $e->getMessage();
+            Logger::overlay('error', 'Flush V11 comments failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+
+        // 5. Clean friendship dirty set (DB already synced, just cleanup)
+        try {
+            $results['friendships_cleaned'] = $this->cleanFriendshipDirtySet();
+        } catch (\Exception $e) {
+            $hasErrors = true;
+            $errors['friendships'] = $e->getMessage();
+            Logger::overlay('error', 'Flush friendships cleanup failed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // 6. Clean settings dirty set (DB already synced, just cleanup)
+        try {
+            $results['settings_cleaned'] = $this->cleanSettingsDirtySet();
+        } catch (\Exception $e) {
+            $hasErrors = true;
+            $errors['settings'] = $e->getMessage();
+            Logger::overlay('error', 'Flush settings cleanup failed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // Clear trigger flag (always try, even on partial failure)
+        try {
+            $this->buffer->clearFlushTrigger();
+        } catch (\Exception $e) {
+            // Non-critical
+        }
+
+        $durationMs = (int)((microtime(true) - $startTime) * 1000);
+
+        // Log to monitoring table (optional)
+        $this->logFlush($results['reactions_flushed'], $results['plays_flushed'], $durationMs);
+
+        // Log summary if there were any successful flushes
+        $totalFlushed = $results['reactions_flushed'] + $results['plays_flushed']
+            + $results['plays_v11_flushed']
+            + $results['comment_likes_flushed'] + $results['comments_flushed']
+            + $results['comments_v6_flushed'] + $results['comments_v11_flushed']
+            + $results['friendships_cleaned'] + $results['settings_cleaned'];
+        if ($totalFlushed > 0 || $hasErrors) {
+            Logger::overlay('info', 'Flush completed', [
+                'reactions' => $results['reactions_flushed'],
+                'plays' => $results['plays_flushed'],
+                'plays_v11' => $results['plays_v11_flushed'],
+                'comment_likes' => $results['comment_likes_flushed'],
+                'comments' => $results['comments_flushed'],
+                'comments_v6' => $results['comments_v6_flushed'],
+                'comments_v11' => $results['comments_v11_flushed'],
+                'friendships' => $results['friendships_cleaned'],
+                'settings' => $results['settings_cleaned'],
+                'has_errors' => $hasErrors,
+                'errors' => $errors,
+                'duration_ms' => $durationMs,
+            ]);
+        }
+
+        $response = [
+            'success' => !$hasErrors,
+            'partial_success' => $hasErrors && $totalFlushed > 0,
+            'reactions_flushed' => $results['reactions_flushed'],
+            'plays_flushed' => $results['plays_flushed'],
+            'plays_v11_flushed' => $results['plays_v11_flushed'],
+            'comment_likes_flushed' => $results['comment_likes_flushed'],
+            'comments_flushed' => $results['comments_flushed'],
+            'comments_v6_flushed' => $results['comments_v6_flushed'],
+            'comments_v11_flushed' => $results['comments_v11_flushed'],
+            'friendships_cleaned' => $results['friendships_cleaned'],
+            'settings_cleaned' => $results['settings_cleaned'],
+            'duration_ms' => $durationMs,
+        ];
+
+        if ($hasErrors) {
+            $response['errors'] = $errors;
+        }
+
+        return $response;
+    }
+
+    /**
+     * Flush reactions buffer to DB
+     *
+     * ENTERPRISE GALAXY V4.1: Per-item error handling.
+     * Invalid items (FK violations, etc.) are logged and removed from buffer.
+     * Valid items continue to be flushed.
+     */
+    private function flushReactions(): int
+    {
+        $totalFlushed = 0;
+        $db = db();
+
+        while (true) {
+            $items = $this->buffer->getPendingReactions(self::BATCH_SIZE);
+            if (empty($items)) {
+                break;
+            }
+
+            // Deduplicate: keep only final state per user+post
+            $deduped = $this->deduplicateReactions($items);
+
+            $flushedItems = [];
+            $failedItems = [];
+
+            // Process each item individually for better error isolation
+            foreach ($deduped as $item) {
+                try {
+                    if ($item['action'] === 'upsert') {
+                        // Insert or update reaction
+                        // ENTERPRISE V11.8: Include user_uuid via subquery
+                        $db->execute(
+                            "INSERT INTO audio_reactions (audio_post_id, user_id, user_uuid, emotion_id, created_at, updated_at)
+                             VALUES (?, ?, (SELECT uuid FROM users WHERE id = ?), ?, NOW(), NOW())
+                             ON CONFLICT (user_id, audio_post_id) DO UPDATE SET
+                                 emotion_id = ?,
+                                 updated_at = NOW()",
+                            [
+                                $item['post_id'],
+                                $item['user_id'],
+                                $item['user_id'],
+                                $item['emotion_id'],
+                                $item['emotion_id'],
+                            ]
+                        );
+                        $flushedItems[] = $item;
+                    } elseif ($item['action'] === 'delete') {
+                        // Delete reaction
+                        $db->execute(
+                            "DELETE FROM audio_reactions WHERE audio_post_id = ? AND user_id = ?",
+                            [$item['post_id'], $item['user_id']]
+                        );
+                        $flushedItems[] = $item;
+                    }
+                } catch (\Exception $e) {
+                    // Log failed item but continue with others
+                    $failedItems[] = $item;
+                    Logger::overlay('error', 'Reaction item flush failed', [
+                        'error' => $e->getMessage(),
+                        'post_id' => $item['post_id'] ?? null,
+                        'user_id' => $item['user_id'] ?? null,
+                        'action' => $item['action'] ?? null,
+                    ]);
+                }
+            }
+
+            // Remove ALL items from buffer (both successful and failed)
+            // Failed items should not be retried - they have invalid data
+            $this->buffer->removeFlushedItems($items, 'reactions');
+            $totalFlushed += count($flushedItems);
+
+            // Log summary if there were failures
+            if (!empty($failedItems)) {
+                Logger::overlay('warning', 'Reactions batch partial flush', [
+                    'flushed' => count($flushedItems),
+                    'failed' => count($failedItems),
+                    'batch_size' => count($items),
+                ]);
+            }
+        }
+
+        return $totalFlushed;
+    }
+
+    /**
+     * Deduplicate reactions: keep only final state per user+post
+     */
+    private function deduplicateReactions(array $items): array
+    {
+        $byKey = [];
+
+        foreach ($items as $item) {
+            $key = $item['user_id'] . ':' . $item['post_id'];
+            // Later items (higher timestamp) override earlier ones
+            $byKey[$key] = $item;
+        }
+
+        return array_values($byKey);
+    }
+
+    /**
+     * Log flush to monitoring table (optional)
+     */
+    private function logFlush(int $reactionsCount, int $playsCount, int $durationMs): void
+    {
+        if ($reactionsCount === 0 && $playsCount === 0) {
+            return; // Nothing to log
+        }
+
+        try {
+            $db = db();
+
+            // Check if table exists (may not in fresh installs)
+            $tableExists = $db->findOne(
+                "SELECT EXISTS (
+                    SELECT FROM information_schema.tables
+                    WHERE table_name = 'overlay_flush_log'
+                )"
+            );
+
+            if (!$tableExists || !$tableExists['exists']) {
+                return;
+            }
+
+            // Log reactions flush
+            if ($reactionsCount > 0) {
+                $db->execute(
+                    "INSERT INTO overlay_flush_log (flush_type, items_flushed, duration_ms)
+                     VALUES ('reactions', ?, ?)",
+                    [$reactionsCount, $durationMs]
+                );
+            }
+
+            // Log plays flush
+            if ($playsCount > 0) {
+                $db->execute(
+                    "INSERT INTO overlay_flush_log (flush_type, items_flushed, duration_ms)
+                     VALUES ('plays', ?, ?)",
+                    [$playsCount, $durationMs]
+                );
+            }
+
+        } catch (\Exception $e) {
+            // Non-critical, don't fail flush on logging error
+        }
+    }
+
+    /**
+     * Clean friendship dirty set
+     *
+     * NOTE: Friendships are written to DB synchronously in Friendship model.
+     * The dirty set is used only for overlay TTL management.
+     * We just clean old entries to prevent memory bloat.
+     *
+     * @return int Number of items cleaned
+     */
+    private function cleanFriendshipDirtySet(): int
+    {
+        if (!$this->friendshipOverlay) {
+            return 0;
+        }
+
+        try {
+            $items = $this->friendshipOverlay->getPendingChanges(self::BATCH_SIZE);
+
+            if (empty($items)) {
+                return 0;
+            }
+
+            // Simply remove from dirty set (data already in DB)
+            $this->friendshipOverlay->removeFlushedItems($items);
+
+            return count($items);
+
+        } catch (\Exception $e) {
+            Logger::overlay('error', 'Clean friendship dirty set failed', [
+                'error' => $e->getMessage(),
+            ]);
+            return 0;
+        }
+    }
+
+    /**
+     * Clean user settings dirty set
+     *
+     * NOTE: Settings are written to DB synchronously in UserSettings model.
+     * The dirty set is used only for overlay TTL management.
+     *
+     * @return int Number of items cleaned
+     */
+    private function cleanSettingsDirtySet(): int
+    {
+        if (!$this->settingsOverlay) {
+            return 0;
+        }
+
+        try {
+            $items = $this->settingsOverlay->getPendingChanges(self::BATCH_SIZE);
+
+            if (empty($items)) {
+                return 0;
+            }
+
+            // Simply remove from dirty set (data already in DB)
+            $this->settingsOverlay->removeFlushedItems($items);
+
+            return count($items);
+
+        } catch (\Exception $e) {
+            Logger::overlay('error', 'Clean settings dirty set failed', [
+                'error' => $e->getMessage(),
+            ]);
+            return 0;
+        }
+    }
+
+    /**
+     * Flush comment likes buffer to DB [V4.2]
+     *
+     * Processes like/unlike actions and updates denormalized like_count
+     */
+    private function flushCommentLikes(): int
+    {
+        $totalFlushed = 0;
+        $db = db();
+
+        while (true) {
+            $items = $this->buffer->getPendingCommentLikes(self::BATCH_SIZE);
+            if (empty($items)) {
+                break;
+            }
+
+            // Deduplicate: keep only final state per user+comment
+            $deduped = $this->deduplicateCommentLikes($items);
+
+            // Track like count changes per comment for denormalized update
+            $likeDeltaPerComment = [];
+            $flushedItems = [];
+
+            foreach ($deduped as $item) {
+                try {
+                    $commentId = $item['comment_id'];
+
+                    if ($item['action'] === 'like') {
+                        $this->commentRepository->addLike($commentId, $item['user_id']);
+                        $likeDeltaPerComment[$commentId] = ($likeDeltaPerComment[$commentId] ?? 0) + 1;
+                        $flushedItems[] = $item;
+                    } elseif ($item['action'] === 'unlike') {
+                        $this->commentRepository->removeLike($commentId, $item['user_id']);
+                        $likeDeltaPerComment[$commentId] = ($likeDeltaPerComment[$commentId] ?? 0) - 1;
+                        $flushedItems[] = $item;
+                    }
+                } catch (\Exception $e) {
+                    Logger::overlay('error', 'Comment like item flush failed', [
+                        'error' => $e->getMessage(),
+                        'comment_id' => $item['comment_id'] ?? null,
+                        'user_id' => $item['user_id'] ?? null,
+                    ]);
+                }
+            }
+
+            // Update denormalized like_count in audio_comments
+            foreach ($likeDeltaPerComment as $commentId => $delta) {
+                if ($delta !== 0) {
+                    try {
+                        $this->commentRepository->updateLikeCount($commentId, $delta);
+                    } catch (\Exception $e) {
+                        Logger::overlay('error', 'Comment like_count update failed', [
+                            'comment_id' => $commentId,
+                            'delta' => $delta,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+
+            // Remove all items from buffer
+            $this->buffer->removeFlushedItems($items, 'comment_likes');
+            $totalFlushed += count($flushedItems);
+        }
+
+        return $totalFlushed;
+    }
+
+    /**
+     * Flush comments buffer to DB [ENTERPRISE V10.153]
+     *
+     * ENTERPRISE V10.153 (2025-12-09): RESTORED buffer-based reply_count updates!
+     *
+     * Architecture:
+     * - CommentRepository does NOT update reply_count directly (removed novice pattern)
+     * - WriteBehindBuffer stores events with parent_comment_id
+     * - This method reads buffer and updates reply_count asynchronously
+     * - Better for high concurrency: no DB writes blocking HTTP requests
+     *
+     * V6 (flushCommentsV6) handles audio_posts.comment_count via atomic Lua scripts.
+     *
+     * This method handles:
+     * - audio_comments.reply_count (for parent comments) via buffer
+     * - Buffer cleanup after processing
+     */
+    private function flushComments(): int
+    {
+        $totalFlushed = 0;
+        $db = db();
+
+        while (true) {
+            $items = $this->buffer->getPendingComments(self::BATCH_SIZE);
+            if (empty($items)) {
+                break;
+            }
+
+            // ENTERPRISE V10.153: Track reply_count deltas for parent comments
+            // Post comment_count is handled by flushCommentsV6() - DO NOT duplicate here!
+            $parentReplyDelta = [];     // parent_comment_id => delta
+
+            foreach ($items as $item) {
+                $parentId = $item['parent_comment_id'] ?? null;
+
+                // Only track reply_count for replies (has parent_comment_id)
+                // Root comments (parentId === null) don't affect reply_count
+                if ($item['action'] === 'create' && $parentId) {
+                    $parentReplyDelta[$parentId] = ($parentReplyDelta[$parentId] ?? 0) + 1;
+                } elseif ($item['action'] === 'delete' && $parentId) {
+                    $parentReplyDelta[$parentId] = ($parentReplyDelta[$parentId] ?? 0) - 1;
+                }
+            }
+
+            // Update audio_comments.reply_count for parent comments
+            foreach ($parentReplyDelta as $parentId => $delta) {
+                if ($delta !== 0) {
+                    try {
+                        $this->commentRepository->updateReplyCount($parentId, $delta);
+                    } catch (\Exception $e) {
+                        Logger::overlay('error', 'Comment reply_count update failed', [
+                            'parent_comment_id' => $parentId,
+                            'delta' => $delta,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+
+            // Remove all items from buffer
+            $this->buffer->removeFlushedItems($items, 'comments');
+            $totalFlushed += count($items);
+        }
+
+        return $totalFlushed;
+    }
+
+    /**
+     * Deduplicate comment likes: keep only final state per user+comment
+     */
+    private function deduplicateCommentLikes(array $items): array
+    {
+        $byKey = [];
+
+        foreach ($items as $item) {
+            $key = $item['user_id'] . ':' . $item['comment_id'];
+            $byKey[$key] = $item;
+        }
+
+        return array_values($byKey);
+    }
+
+    /**
+     * Check if flush is needed (wrapper for buffer check)
+     */
+    public function needsFlush(): bool
+    {
+        return $this->buffer->needsFlush();
+    }
+
+    /**
+     * Get buffer status for monitoring (all overlay types)
+     */
+    public function getStatus(): array
+    {
+        // Get extended status including comment buffers [V4.2]
+        $status = $this->buffer->getExtendedBufferStatus();
+
+        // Add friendship overlay status
+        if ($this->friendshipOverlay) {
+            $friendshipStatus = $this->friendshipOverlay->getBufferStatus();
+            $status['friendships_pending'] = $friendshipStatus['friendships_pending'] ?? 0;
+        }
+
+        // Add settings overlay status
+        if ($this->settingsOverlay) {
+            $settingsStatus = $this->settingsOverlay->getBufferStatus();
+            $status['settings_pending'] = $settingsStatus['settings_pending'] ?? 0;
+        }
+
+        return $status;
+    }
+
+    // =========================================================================
+    // V6 GENERATIONAL FLUSH METHODS (2025-11-29)
+    // =========================================================================
+
+    /**
+     * Flush V6.2 plays to DB (audio_files.play_count)
+     *
+     * ENTERPRISE V6.2 (2025-11-29): Flush timestamp instead of event deletion.
+     *
+     * Flow:
+     * 1. Get pending events count via ZCARD
+     * 2. Write increment to DB
+     * 3. Set flush timestamp (events BEFORE this are "already in DB")
+     * 4. getBatchPlaysDeltas() counts only events AFTER flush timestamp
+     *
+     * Benefits:
+     * - NO cache invalidation needed
+     * - Old cache + events since flush = correct
+     * - Events auto-expire via TTL (24h)
+     *
+     * @return int Number of files flushed
+     */
+    private function flushPlaysV6(): int
+    {
+        $totalFlushed = 0;
+        $db = db();
+
+        // V6.2: Get dirty audio files from generational overlay
+        $dirtyFiles = $this->overlay->getDirtyPlayFiles(self::BATCH_SIZE);
+
+        if (empty($dirtyFiles)) {
+            return 0;
+        }
+
+        $flushedFiles = [];
+        $failedFiles = [];
+
+        foreach ($dirtyFiles as $audioFileId) {
+            try {
+                // =====================================================================
+                // ENTERPRISE V6.9 (2025-11-30): ATOMIC FLUSH WITH LUA SCRIPT
+                // =====================================================================
+                // Previous V6.3 had a race condition:
+                // 1. ZCARD (count events)
+                // 2. UPDATE DB
+                // 3. DEL events  <-- New events arriving between step 1-3 are lost!
+                //
+                // V6.9 solution: Atomic Lua script executes ZCARD + DEL in single op
+                // Events arriving during DB update will be in the NEW sorted set
+                // (DEL removes the old set, new events create a fresh set)
+                //
+                // This is 100% race-condition free because:
+                // - Lua script is atomic on Redis server (single-threaded)
+                // - Events arriving DURING Lua execution queue up, execute AFTER
+                // - New events will accumulate in fresh sorted set
+                // =====================================================================
+                $eventKey = 'gen:overlay:plays:' . $audioFileId;
+                $playCount = $this->atomicFlushSortedSet($eventKey);
+
+                if ($playCount > 0) {
+                    // Increment DB play_count WITH cache invalidation
+                    // ENTERPRISE V6.4: Invalidate cache to force refresh
+                    $db->execute(
+                        "UPDATE audio_files SET
+                            play_count = COALESCE(play_count, 0) + ?,
+                            updated_at = NOW()
+                         WHERE id = ?",
+                        [$playCount, $audioFileId],
+                        // ENTERPRISE FIX: Use table: prefix for proper cache invalidation
+                        ['invalidate_cache' => ['table:audio_posts', 'table:audio_files']]
+                    );
+
+                    Logger::overlay('debug', 'V6.9 Play flush successful (atomic)', [
+                        'audio_file_id' => $audioFileId,
+                        'play_count' => $playCount,
+                    ]);
+                }
+
+                $flushedFiles[] = $audioFileId;
+
+            } catch (\Exception $e) {
+                $failedFiles[] = $audioFileId;
+                Logger::overlay('error', 'V6.9 Play flush failed', [
+                    'error' => $e->getMessage(),
+                    'audio_file_id' => $audioFileId,
+                ]);
+            }
+        }
+
+        // Clear dirty markers for flushed files
+        if (!empty($flushedFiles)) {
+            $this->overlay->clearDirtyPlayFiles($flushedFiles);
+            // NOTE V10.158: Cache invalidation REMOVED - deltas are now applied
+            // fresh at serving time via FeedPrecomputeService::applyFreshOverlayDeltas()
+        }
+
+        $totalFlushed = count($flushedFiles);
+
+        if (!empty($failedFiles)) {
+            Logger::overlay('warning', 'V6.9 Plays batch partial flush', [
+                'flushed' => count($flushedFiles),
+                'failed' => count($failedFiles),
+            ]);
+        }
+
+        return $totalFlushed;
+    }
+
+    // NOTE V10.158: invalidatePrecomputedFeedCaches() REMOVED
+    // Cache invalidation is no longer needed. Deltas are now applied fresh
+    // at serving time via FeedPrecomputeService::applyFreshOverlayDeltas()
+
+    /**
+     * Flush V6.9 comments to DB (audio_posts.comment_count)
+     *
+     * ENTERPRISE V6.9 (2025-11-30): ATOMIC DELTA FLUSH WITH LUA SCRIPT
+     *
+     * Previous V6.3 had a race condition:
+     * 1. ZRANGE (get all events)
+     * 2. Loop and sum deltas
+     * 3. UPDATE DB
+     * 4. DEL events  <-- New events arriving between step 1-4 are lost!
+     *
+     * V6.9 solution: Atomic Lua script executes ZRANGE + SUM + DEL in single op
+     * Events arriving during DB update will be in the NEW sorted set
+     * (DEL removes the old set, new events create a fresh set)
+     *
+     * @return int Number of posts flushed
+     */
+    private function flushCommentsV6(): int
+    {
+        $totalFlushed = 0;
+        $db = db();
+
+        // V6.2: Get dirty posts from CommentOverlayService
+        $commentOverlay = CommentOverlayService::getInstance();
+        if (!$commentOverlay->isAvailable()) {
+            return 0;
+        }
+
+        $dirtyPosts = $commentOverlay->getDirtyCommentPostIds(self::BATCH_SIZE);
+
+        if (empty($dirtyPosts)) {
+            return 0;
+        }
+
+        $flushedPosts = [];
+        $failedPosts = [];
+
+        foreach ($dirtyPosts as $postId) {
+            try {
+                // =====================================================================
+                // ENTERPRISE V10.153 (2025-12-09): TIMESTAMP-BASED FLUSH (NO DELETE!)
+                // =====================================================================
+                // Uses LUA_ATOMIC_DELTA_FLUSH_TIMESTAMP which:
+                // 1. ZRANGEBYSCORE to get events up to current timestamp
+                // 2. Parse and SUM all delta values (+1/-1)
+                // 3. SET flush timestamp marker (NO DELETE!)
+                // 4. ZREMRANGEBYSCORE to prune old events (cleanup)
+                // 5. Return total delta
+                //
+                // Benefits over V6.9 (DELETE-based):
+                // - getBatchCommentDeltas() filters by flush timestamp
+                // - New events accumulate, delta = events_after_flush_timestamp
+                // NOTE: Precomputed feed cache STILL needs invalidation (V10.157)
+                // =====================================================================
+                $eventKey = 'gen:overlay:comments:' . $postId;
+                $delta = $this->atomicDeltaFlushWithTimestamp($eventKey, (int) $postId);
+
+                if ($delta !== 0) {
+                    // Update DB comment_count WITH cache invalidation
+                    // ENTERPRISE V6.4: Invalidate cache to force refresh
+                    $db->execute(
+                        "UPDATE audio_posts SET
+                            comment_count = GREATEST(0, COALESCE(comment_count, 0) + ?),
+                            updated_at = NOW()
+                         WHERE id = ?",
+                        [$delta, $postId],
+                        // ENTERPRISE FIX: Use table: prefix for proper cache invalidation
+                        ['invalidate_cache' => ['table:audio_posts']]
+                    );
+
+                    Logger::overlay('debug', 'V6.9 Comment flush successful (atomic)', [
+                        'post_id' => $postId,
+                        'delta' => $delta,
+                    ]);
+                }
+
+                // Clear dirty marker
+                $commentOverlay->clearCommentEvents((int)$postId);
+                $flushedPosts[] = $postId;
+
+            } catch (\Exception $e) {
+                $failedPosts[] = $postId;
+                Logger::overlay('error', 'V6.9 Comment flush failed', [
+                    'error' => $e->getMessage(),
+                    'post_id' => $postId,
+                ]);
+            }
+        }
+
+        $totalFlushed = count($flushedPosts);
+
+        // NOTE V10.158: Cache invalidation REMOVED - deltas are now applied
+        // fresh at serving time via FeedPrecomputeService::applyFreshOverlayDeltas()
+
+        if (!empty($failedPosts)) {
+            Logger::overlay('warning', 'V6.9 Comments batch partial flush', [
+                'flushed' => count($flushedPosts),
+                'failed' => count($failedPosts),
+            ]);
+        }
+
+        return $totalFlushed;
+    }
+
+    // =========================================================================
+    // V11 ABSOLUTE VALUE FLUSH METHODS (2025-12-11)
+    // =========================================================================
+    //
+    // V11 FIX: Switched from DELTA/EVENT system to ABSOLUTE VALUE (like reactions)
+    //
+    // THE V6 DELTA BUG:
+    //   T1: Event added → delta = +1 → display = DB(5) + 1 = 6 ✓
+    //   T2: Flush → DB += 1 = 6, events deleted
+    //   T3: Reload → display = CACHED_DB(5) + 0 = 5 ✗ WRONG!
+    //
+    // V11 ABSOLUTE SOLUTION:
+    //   T1: Action → overlay = 6 (absolute)
+    //   T2: Flush → DB = 6 (SET, not increment), DELETE overlay
+    //   T3: Reload → overlay NULL → display = DB(6) ✓
+    //
+    // KEY DIFFERENCE: After flush, overlay is DELETED (not reset to 0).
+    // This forces reads to fallback to fresh DB value.
+    // =========================================================================
+
+    /**
+     * Flush V11 plays to DB (audio_files.play_count)
+     *
+     * ENTERPRISE V11 (2025-12-11): ABSOLUTE VALUE FLUSH
+     *
+     * Flow:
+     * 1. Get dirty audio files from V11 overlay
+     * 2. Read ABSOLUTE count from overlay
+     * 3. SET (not increment!) DB to absolute value
+     * 4. DELETE overlay (forces next read to use fresh DB)
+     *
+     * @return int Number of files flushed
+     */
+    public function flushPlaysV11(): int
+    {
+        $totalFlushed = 0;
+        $db = db();
+
+        // V11: Get dirty audio files from absolute overlay
+        $dirtyFiles = $this->overlay->getDirtyPlayFilesAbsolute(self::BATCH_SIZE);
+
+        if (empty($dirtyFiles)) {
+            return 0;
+        }
+
+        $flushedFiles = [];
+        $failedFiles = [];
+
+        foreach ($dirtyFiles as $audioFileId) {
+            try {
+                // V11: Read ABSOLUTE value from overlay
+                $absoluteCount = $this->overlay->getPlayAbsolute($audioFileId);
+
+                if ($absoluteCount !== null && $absoluteCount >= 0) {
+                    // SET (not increment!) DB to absolute value
+                    $db->execute(
+                        "UPDATE audio_files SET
+                            play_count = ?,
+                            updated_at = NOW()
+                         WHERE id = ?",
+                        [$absoluteCount, $audioFileId],
+                        ['invalidate_cache' => ['table:audio_posts', 'table:audio_files']]
+                    );
+
+                    // V11.4 FIX (2025-12-11): DON'T delete overlay!
+                    // The precomputed feed is STALE - if we delete overlay, feed shows old value.
+                    // Keep overlay alive until natural TTL expiry (1 hour).
+                    // OLD BUG: deletePlayOverlay($audioFileId) caused count to revert on refresh
+
+                    Logger::overlay('debug', 'V11.4 Play flush successful (kept overlay)', [
+                        'audio_file_id' => $audioFileId,
+                        'absolute_count' => $absoluteCount,
+                    ]);
+                }
+
+                $flushedFiles[] = $audioFileId;
+
+            } catch (\Exception $e) {
+                $failedFiles[] = $audioFileId;
+                Logger::overlay('error', 'V11 Play flush failed', [
+                    'error' => $e->getMessage(),
+                    'audio_file_id' => $audioFileId,
+                ]);
+            }
+        }
+
+        // Clear dirty markers for flushed files
+        if (!empty($flushedFiles)) {
+            $this->overlay->clearDirtyPlayFilesAbsolute($flushedFiles);
+        }
+
+        $totalFlushed = count($flushedFiles);
+
+        if (!empty($failedFiles)) {
+            Logger::overlay('warning', 'V11 Plays batch partial flush', [
+                'flushed' => count($flushedFiles),
+                'failed' => count($failedFiles),
+            ]);
+        }
+
+        return $totalFlushed;
+    }
+
+    /**
+     * Flush V11 comments to DB (audio_posts.comment_count)
+     *
+     * ENTERPRISE V11 (2025-12-11): ABSOLUTE VALUE FLUSH
+     *
+     * Flow:
+     * 1. Get dirty posts from V11 overlay
+     * 2. Read ABSOLUTE count from overlay
+     * 3. SET (not increment!) DB to absolute value
+     * 4. DELETE overlay (forces next read to use fresh DB)
+     *
+     * @return int Number of posts flushed
+     */
+    public function flushCommentsV11(): int
+    {
+        $totalFlushed = 0;
+        $db = db();
+
+        // V11: Get dirty posts from absolute overlay
+        $dirtyPosts = $this->overlay->getDirtyCommentPostsAbsolute(self::BATCH_SIZE);
+
+        if (empty($dirtyPosts)) {
+            return 0;
+        }
+
+        $flushedPosts = [];
+        $failedPosts = [];
+
+        foreach ($dirtyPosts as $postId) {
+            try {
+                // V11: Read ABSOLUTE value from overlay
+                $absoluteCount = $this->overlay->getCommentAbsolute($postId);
+
+                if ($absoluteCount !== null && $absoluteCount >= 0) {
+                    // SET (not increment!) DB to absolute value
+                    $db->execute(
+                        "UPDATE audio_posts SET
+                            comment_count = ?,
+                            updated_at = NOW()
+                         WHERE id = ?",
+                        [$absoluteCount, $postId],
+                        ['invalidate_cache' => ['table:audio_posts']]
+                    );
+
+                    // V11.4 FIX (2025-12-11): DON'T delete overlay!
+                    // The precomputed feed is STALE - if we delete overlay, feed shows old value.
+                    // Keep overlay alive until natural TTL expiry (1 hour).
+                    // Overlay will continue to provide correct count until feed is regenerated.
+                    // OLD BUG: deleteCommentOverlay($postId) caused count to revert on refresh
+
+                    Logger::overlay('debug', 'V11.4 Comment flush successful (kept overlay)', [
+                        'post_id' => $postId,
+                        'absolute_count' => $absoluteCount,
+                    ]);
+                }
+
+                $flushedPosts[] = $postId;
+
+            } catch (\Exception $e) {
+                $failedPosts[] = $postId;
+                Logger::overlay('error', 'V11 Comment flush failed', [
+                    'error' => $e->getMessage(),
+                    'post_id' => $postId,
+                ]);
+            }
+        }
+
+        // Clear dirty markers for flushed posts
+        if (!empty($flushedPosts)) {
+            $this->overlay->clearDirtyCommentPostsAbsolute($flushedPosts);
+        }
+
+        $totalFlushed = count($flushedPosts);
+
+        if (!empty($failedPosts)) {
+            Logger::overlay('warning', 'V11 Comments batch partial flush', [
+                'flushed' => count($flushedPosts),
+                'failed' => count($failedPosts),
+            ]);
+        }
+
+        return $totalFlushed;
+    }
+}
